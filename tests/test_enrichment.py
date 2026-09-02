@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from sms.enrich.wikipedia import HUMAN, _is_composer, _is_human, _year
+from sms.enrich.wikipedia import HUMAN, MUSICAL_GROUPS, _is_composer, _is_human, qualifies, _year
 from sms.music.periods import derive_period, lifespan
 
 
@@ -66,6 +66,16 @@ class TestWikidataGuards:
     def test_a_person_who_is_not_a_musician_does_not(self):
         entity = claims(p31=[HUMAN], p106=["Q82955"])  # politician
         assert _is_human(entity) and not _is_composer(entity)
+        assert not qualifies(entity)
+
+    def test_a_band_qualifies_without_an_occupation(self):
+        # Half this library is popular song credited to a group. Requiring a
+        # *person* left Abba and The Beatles with nothing; a band has no P106.
+        band = claims(p31=[sorted(MUSICAL_GROUPS)[0]], p106=[])
+        assert qualifies(band)
+
+    def test_a_film_qualifies_as_neither(self):
+        assert not qualifies(claims(p31=["Q11424"], p106=[]))
 
 
 class TestYearParsing:

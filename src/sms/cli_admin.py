@@ -268,6 +268,11 @@ def composer_enrich(
     limit: int = typer.Option(None, "--limit", "-n", help="Stop after N composers."),
     force: bool = typer.Option(False, "--force", help="Re-fetch composers already enriched."),
     name: str = typer.Option(None, "--name", help="Enrich just this composer."),
+    retry_unmatched: bool = typer.Option(
+        False, "--retry-unmatched",
+        help="Re-try only those that previously found nothing on Wikidata.",
+    ),
+    pause: float = typer.Option(2.0, "--pause", help="Seconds between composers."),
 ) -> None:
     """Fetch descriptions, dates, periods and portraits from Wikipedia.
 
@@ -279,7 +284,16 @@ def composer_enrich(
     from .enrich.composers import counts, enrich, pending
 
     with session_scope() as session:
-        if name:
+        if retry_unmatched:
+            targets = list(session.scalars(
+                select(Composer)
+                .where(Composer.enriched_at.isnot(None), Composer.wikidata_id.is_(None))
+                .order_by(Composer.canonical_name)
+            ))
+            if limit:
+                targets = targets[:limit]
+            force = True
+        elif name:
             targets = list(session.scalars(
                 select(Composer).where(Composer.canonical_name.ilike(f"%{name}%"))
             ))
@@ -302,7 +316,9 @@ def composer_enrich(
             console.print(f"  {mark} {composer.canonical_name}: {message}")
             session.commit()
             if index < len(targets) - 1:
-                time.sleep(1.0)
+                # Each composer costs three API calls; Wikimedia rate-limits
+                # anonymous clients and a 429 storm helps nobody.
+                time.sleep(pause)
 
         stats = counts(session)
     console.print(

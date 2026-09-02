@@ -3,10 +3,14 @@
 **Wikidata first, deliberately.**  The obvious approach -- search Wikipedia for
 "<name> composer" and take the top hit -- ranks the 1979 play *Amadeus* above
 Mozart, and will cheerfully return an article about anything.  Instead a
-candidate must *be* a human (P31=Q5) whose occupations (P106) include composing,
-and whose label still resembles the name asked for.  A miss returns nothing
-rather than a confident answer about the wrong subject, which is the same
-standard the ingest scorer holds itself to.
+candidate must *be* a person who writes or performs music (P31=Q5 plus a music
+occupation) or a band (P31 a musical group), and its label must still resemble
+the name asked for.  A miss returns nothing rather than a confident answer about
+the wrong subject, which is the same standard the ingest scorer holds itself to.
+
+A *transient* failure is not a miss.  Wikimedia rate-limits, and reporting a 429
+as "no article found" would record a definitive negative that is never retried,
+so those raise :class:`LookupUnavailable` instead.
 
 Then, per composer:
 
@@ -25,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -45,11 +50,26 @@ COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = "SheetMusicShelf/0.1 (self-hosted personal music library; +https://github.com/)"
 
 TIMEOUT = httpx.Timeout(15.0, connect=8.0)
+#: Wikimedia rate-limits anonymous clients. Back off and retry rather than
+#: treating a 429 as an answer.
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+MAX_RETRIES = 4
+BACKOFF_BASE = 2.0
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 PORTRAIT_WIDTH = 640
 
 #: Wikidata items used to prove a candidate is a person who wrote music.
 HUMAN = "Q5"
+#: ...or a band.  Half this library is popular song credited to a group, and
+#: requiring a *person* left Abba and The Beatles with nothing.  A group has no
+#: P106 occupation, so being a musical ensemble is the qualification itself.
+MUSICAL_GROUPS = {
+    "Q215380",   # musical group
+    "Q2088357",  # musical ensemble
+    "Q5741069",  # rock band
+    "Q9212979",  # musical duo
+    "Q281643",   # pop music group... also used for duos
+}
 MUSIC_OCCUPATIONS = {
     "Q36834",    # composer
     "Q1259917",  # lyricist... also used for song writers
@@ -92,12 +112,50 @@ class ComposerFacts:
         return bool(self.image_bytes)
 
 
+class LookupUnavailable(RuntimeError):
+    """The service could not be reached or asked us to slow down.
+
+    Distinct from "not found": the caller must not record a result, because
+    there is nothing to record and the name deserves another try later.
+    """
+
+
 def _client() -> httpx.Client:
     return httpx.Client(
         timeout=TIMEOUT,
         headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         follow_redirects=True,
     )
+
+
+def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
+    """GET with backoff on the statuses that mean "later, not never"."""
+    delay = BACKOFF_BASE
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.get(url, **kwargs)
+        except httpx.HTTPError as exc:
+            if attempt == MAX_RETRIES - 1:
+                raise LookupUnavailable(str(exc)) from exc
+            time.sleep(delay)
+            delay *= 2
+            continue
+
+        if response.status_code in RETRY_STATUSES:
+            if attempt == MAX_RETRIES - 1:
+                raise LookupUnavailable(f"{response.status_code} after {MAX_RETRIES} tries")
+            # Honour Retry-After when the server sets it.
+            wait = response.headers.get("retry-after")
+            try:
+                pause = float(wait) if wait else delay
+            except ValueError:
+                pause = delay
+            log.info("wikidata %s; waiting %.0fs", response.status_code, pause)
+            time.sleep(min(pause, 60))
+            delay *= 2
+            continue
+        return response
+    raise LookupUnavailable("exhausted retries")
 
 
 def _strip_html(text: str) -> str:
@@ -125,7 +183,7 @@ def _find_entity(client: httpx.Client, name: str) -> tuple[str, str, dict] | Non
     label still resembles what we asked for -- so a miss returns nothing rather
     than a confident answer about the wrong subject.
     """
-    response = client.get(WIKIDATA_API, params={
+    response = _get(client, WIKIDATA_API, params={
         "action": "wbsearchentities", "format": "json", "language": "en",
         "uselang": "en", "type": "item", "limit": 10, "search": name,
     })
@@ -141,7 +199,7 @@ def _find_entity(client: httpx.Client, name: str) -> tuple[str, str, dict] | Non
             continue
 
         claims = _entity(client, qid)
-        if not _is_human(claims) or not _is_composer(claims):
+        if not qualifies(claims):
             continue
         return qid, label, claims
     return None
@@ -160,8 +218,21 @@ def _is_human(claims: dict) -> bool:
     return HUMAN in _claim_ids(claims, "P31")
 
 
+def _is_group(claims: dict) -> bool:
+    return bool(_claim_ids(claims, "P31") & MUSICAL_GROUPS)
+
+
 def _is_composer(claims: dict) -> bool:
     return bool(_claim_ids(claims, "P106") & MUSIC_OCCUPATIONS)
+
+
+def qualifies(claims: dict) -> bool:
+    """Whether this item is a plausible attribution for a piece of music.
+
+    Either a person who writes or performs music, or a band.  A play about a
+    composer, a film, or a politician is none of those and is refused.
+    """
+    return (_is_human(claims) and _is_composer(claims)) or _is_group(claims)
 
 
 def _article_title(claims_entity: dict) -> str:
@@ -170,8 +241,9 @@ def _article_title(claims_entity: dict) -> str:
 
 
 def _summary(client: httpx.Client, title: str) -> tuple[str, str]:
-    response = client.get(
-        f"https://en.wikipedia.org/api/rest_v1/page/summary/{httpx.URL(title).path.lstrip('/')}"
+    response = _get(
+        client,
+        f"https://en.wikipedia.org/api/rest_v1/page/summary/{httpx.URL(title).path.lstrip('/')}",
     )
     if response.status_code != 200:
         return "", ""
@@ -189,7 +261,7 @@ def _entity_full(client: httpx.Client, wikidata_id: str) -> dict:
     """Claims plus sitelinks, memoised for the life of the process."""
     if wikidata_id in _ENTITY_CACHE:
         return _ENTITY_CACHE[wikidata_id]
-    response = client.get(WIKIDATA_API, params={
+    response = _get(client, WIKIDATA_API, params={
         "action": "wbgetentities", "format": "json", "ids": wikidata_id,
         "props": "claims|sitelinks|labels", "languages": "en", "sitefilter": "enwiki",
     })
@@ -215,7 +287,7 @@ def _claim_value(claims: dict, prop: str) -> str | None:
 
 def _commons_image(client: httpx.Client, filename: str) -> dict:
     """Fetch a scaled portrait plus its attribution metadata."""
-    response = client.get(COMMONS_API, params={
+    response = _get(client, COMMONS_API, params={
         "action": "query", "format": "json", "titles": f"File:{filename}",
         "prop": "imageinfo", "iiprop": "url|extmetadata", "iiurlwidth": PORTRAIT_WIDTH,
     })
@@ -250,8 +322,10 @@ def lookup(name: str) -> ComposerFacts | None:
             else:
                 facts.notes.append("no English Wikipedia article")
 
-            facts.born = _year(_claim_value(claims, "P569"))
-            facts.died = _year(_claim_value(claims, "P570"))
+            # A band has no birthday: its inception (P571) and dissolution
+            # (P576) are the equivalent span, and give it a period like anyone.
+            facts.born = _year(_claim_value(claims, "P569")) or _year(_claim_value(claims, "P571"))
+            facts.died = _year(_claim_value(claims, "P570")) or _year(_claim_value(claims, "P576"))
             facts.period = derive_period(facts.born, facts.died)
 
             filename = _claim_value(claims, "P18")
@@ -281,9 +355,10 @@ def lookup(name: str) -> ComposerFacts | None:
                 facts.image_suffix = suffix if suffix in (".jpg", ".jpeg", ".png", ".webp") else ".jpg"
             else:
                 facts.notes.append(f"portrait download failed ({image.status_code})")
+    except LookupUnavailable:
+        raise
     except httpx.HTTPError as exc:
-        log.warning("enrichment failed for %s: %s", name, exc)
-        return None
+        raise LookupUnavailable(str(exc)) from exc
     return facts
 
 

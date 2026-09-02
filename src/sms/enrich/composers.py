@@ -73,10 +73,16 @@ def enrich(session: Session, composer: Composer, *, force: bool = False) -> tupl
     if composer.enriched_at and not force:
         return False, "already enriched"
 
-    facts = wikipedia.lookup(composer.canonical_name)
+    try:
+        facts = wikipedia.lookup(composer.canonical_name)
+    except wikipedia.LookupUnavailable as exc:
+        # Deliberately do not stamp enriched_at: this name has not been
+        # answered, only deferred, and must come round again.
+        return False, f"lookup unavailable ({exc})"
+
     if facts is None:
         composer.enriched_at = datetime.now(timezone.utc)
-        return False, "no Wikipedia article found"
+        return False, "no matching person or group on Wikidata"
 
     changed: list[str] = []
 
