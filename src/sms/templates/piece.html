@@ -57,6 +57,44 @@
       {% endif %}
     </div>
 
+    <form class="personal" method="post" action="/piece/{{ piece.id }}/personal">
+      <h2>Yours</h2>
+      <p class="muted small">
+        Opinions, not facts about the music. No re-scan or enrichment touches these.
+      </p>
+      <div class="personal-grid">
+        <label>Difficulty
+          <input type="number" name="difficulty" min="1" max="10" value="{{ piece.difficulty or '' }}">
+        </label>
+        <label>Rating
+          <input type="number" name="rating" min="0" max="5" value="{{ piece.rating if piece.rating is not none else '' }}">
+        </label>
+        <label>Status
+          <select name="status">
+            <option value=""{% if not piece.status %} selected{% endif %}>&mdash;</option>
+            {% for value in ["unplayed", "learning", "repertoire", "retired"] %}
+              <option value="{{ value }}"{% if piece.status == value %} selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% if shelves %}
+          <label>Add to shelf
+            <select name="shelf">
+              <option value="">&mdash;</option>
+              {% for shelf in shelves %}<option value="{{ shelf.id }}">{{ shelf.name }}</option>{% endfor %}
+            </select>
+          </label>
+        {% endif %}
+      </div>
+      <label class="wide">Tags
+        <input name="tags" value="{{ piece.tags | join(', ') }}" placeholder="comma, separated">
+      </label>
+      <label class="wide">Notes
+        <textarea name="notes" rows="3" placeholder="Fingering, which edition to print&hellip;">{{ piece.notes or '' }}</textarea>
+      </label>
+      <p><button class="button" type="submit">Save</button></p>
+    </form>
+
     {% if siblings %}
       <section class="related">
         <h2>Also in this file</h2>

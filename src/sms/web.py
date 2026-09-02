@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import get_session
-from .models import Collection, Composer, FieldCandidate, Piece, SourceFile
+from .models import Collection, Composer, FieldCandidate, Piece, Shelf, ShelfItem, SourceFile
 
 log = logging.getLogger("sms.web")
 
@@ -262,6 +262,7 @@ def piece_detail(
         "piece.html",
         {
             "viewer": viewer, "piece": piece, "composer": composer,
+            "shelves": list(session.scalars(select(Shelf).order_by(Shelf.name))),
             "file": piece.source_file, "collection": piece.source_file.collection,
             "siblings": siblings, "editions": editions,
         },
@@ -462,6 +463,112 @@ async def review_submit(
         target += f"&collection={collection}"
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
+
+
+# --- shelves and personal fields ------------------------------------------
+
+@router.get("/shelves", response_class=HTMLResponse)
+def shelves_index(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Response:
+    viewer = _viewer(request, session)
+    rows = session.execute(
+        select(Shelf, func.count(ShelfItem.id))
+        .outerjoin(ShelfItem, ShelfItem.shelf_id == Shelf.id)
+        .group_by(Shelf.id)
+        .order_by(Shelf.name)
+    ).all()
+    return templates.TemplateResponse(
+        request, "shelves.html",
+        {"viewer": viewer, "shelves": [(shelf, count) for shelf, count in rows]},
+    )
+
+
+@router.post("/shelves")
+async def shelves_create(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    viewer = _viewer(request, session)
+    form = await request.form()
+    name = (form.get("name") or "").strip()
+    if name:
+        session.add(Shelf(name=name, owner_id=viewer.user_id))
+        session.flush()
+    return RedirectResponse("/shelves", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/shelf/{shelf_id}", response_class=HTMLResponse)
+def shelf_detail(
+    shelf_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Response:
+    viewer = _viewer(request, session)
+    shelf = session.get(Shelf, shelf_id)
+    if shelf is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such shelf")
+
+    pieces = list(
+        session.scalars(
+            select(Piece)
+            .join(ShelfItem, ShelfItem.piece_id == Piece.id)
+            .where(ShelfItem.shelf_id == shelf_id)
+            .order_by(ShelfItem.position)
+        )
+    )
+    return templates.TemplateResponse(
+        request, "shelf.html",
+        {"viewer": viewer, "shelf": shelf, "pieces": pieces},
+    )
+
+
+@router.post("/piece/{piece_id}/personal")
+async def piece_personal(
+    piece_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Save the fields that are yours rather than the music's."""
+    _viewer(request, session)
+    piece = session.get(Piece, piece_id)
+    if piece is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
+
+    form = await request.form()
+
+    def number(name: str, low: int, high: int) -> int | None:
+        raw = (form.get(name) or "").strip()
+        if not raw:
+            return None
+        try:
+            return max(low, min(high, int(raw)))
+        except ValueError:
+            return None
+
+    piece.difficulty = number("difficulty", 1, 10)
+    piece.rating = number("rating", 0, 5)
+    piece.status = (form.get("status") or "").strip() or None
+    piece.notes = (form.get("notes") or "").strip() or None
+    piece.tags = sorted({t.strip() for t in (form.get("tags") or "").split(",") if t.strip()})
+
+    shelf_id = (form.get("shelf") or "").strip()
+    if shelf_id.isdigit():
+        existing = session.scalar(
+            select(ShelfItem).where(
+                ShelfItem.shelf_id == int(shelf_id), ShelfItem.piece_id == piece.id
+            )
+        )
+        if existing is None:
+            last = session.scalar(
+                select(func.max(ShelfItem.position)).where(ShelfItem.shelf_id == int(shelf_id))
+            )
+            session.add(
+                ShelfItem(shelf_id=int(shelf_id), piece_id=piece.id, position=(last or 0) + 1)
+            )
+
+    return RedirectResponse(f"/piece/{piece.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # --- page-range editor ----------------------------------------------------

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Shelves &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<div class="shelves">
+
+  <header class="split-head">
+    <div>
+      <h1>Shelves</h1>
+      <p class="muted">Ordered, so a shelf is also a setlist.</p>
+    </div>
+    <form class="newshelf" method="post" action="/shelves">
+      <input name="name" placeholder="New shelf&hellip;" aria-label="New shelf name" required>
+      <button class="button" type="submit">Add</button>
+    </form>
+  </header>
+
+  {% if not shelves %}
+    <div class="empty">
+      <p>No shelves yet.</p>
+      <p class="muted">Make one above, then add pieces from any piece page.</p>
+    </div>
+  {% else %}
+    <ul class="shelflist">
+      {% for shelf, count in shelves %}
+        <li>
+          <a href="/shelf/{{ shelf.id }}">{{ shelf.name }}</a>
+          <span class="muted">{{ count }} {{ "piece" if count == 1 else "pieces" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+</div>
+{% endblock %}

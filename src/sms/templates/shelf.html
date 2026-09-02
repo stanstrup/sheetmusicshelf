@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ shelf.name }} &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<div class="shelves">
+
+  <header class="split-head">
+    <div>
+      <h1>{{ shelf.name }}</h1>
+      <p class="muted">
+        {{ pieces|length }} {{ "piece" if pieces|length == 1 else "pieces" }}, in running order
+      </p>
+    </div>
+    <p><a class="button ghost" href="/shelves">All shelves</a></p>
+  </header>
+
+  {% if not pieces %}
+    <div class="empty">
+      <p>This shelf is empty.</p>
+      <p class="muted">Open any piece and add it from there.</p>
+    </div>
+  {% else %}
+    <ol class="setlist">
+      {% for piece in pieces %}
+        <li>
+          <a class="thumb" href="/read/{{ piece.id }}">
+            <img loading="lazy" src="/api/v1/pieces/{{ piece.id }}/thumb" alt=""
+                 width="320" height="420">
+          </a>
+          <div class="meta">
+            <a class="title" href="/piece/{{ piece.id }}">{{ piece.title or "Untitled" }}</a>
+            <p class="byline">{{ piece.composer_name or "Unknown composer" }}</p>
+            <p class="detail">
+              {% if piece.catalog_display %}<span>{{ piece.catalog_display }}</span>{% endif %}
+              <span>{{ piece.page_count }}&thinsp;pp</span>
+              {% if piece.status %}<span>{{ piece.status }}</span>{% endif %}
+            </p>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+
+</div>
+{% endblock %}
