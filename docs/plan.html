@@ -1,0 +1,624 @@
+<title>Sheet Music Shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap">
+<style>
+:root{
+  --paper:#F3F5F8;
+  --surface:#FFFFFF;
+  --surface-2:#EDF0F5;
+  --ink:#15181F;
+  --ink-soft:#4C5462;
+  --ink-faint:#79808F;
+  --rule:#D5DAE3;
+  --rule-soft:#E3E7EE;
+  --accent:#2C4A8C;
+  --accent-soft:#E4EAF6;
+  --ok:#2C6B4E;
+  --ok-soft:#E0EDE6;
+  --warn:#8E6A16;
+  --warn-soft:#F3EBD8;
+  --alert:#9E2E33;
+  --alert-soft:#F5E2E3;
+  --shadow:0 1px 2px rgba(21,24,31,.06), 0 6px 20px rgba(21,24,31,.05);
+  --display:"Spectral", Georgia, "Times New Roman", serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10131A;
+    --surface:#171B24;
+    --surface-2:#1E2430;
+    --ink:#E7EAF1;
+    --ink-soft:#A2AAB9;
+    --ink-faint:#79818F;
+    --rule:#2B323F;
+    --rule-soft:#232935;
+    --accent:#8DA8E6;
+    --accent-soft:#1C2540;
+    --ok:#63B993;
+    --ok-soft:#16291F;
+    --warn:#D2A44C;
+    --warn-soft:#2A2314;
+    --alert:#E07B80;
+    --alert-soft:#2E1719;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10131A;
+  --surface:#171B24;
+  --surface-2:#1E2430;
+  --ink:#E7EAF1;
+  --ink-soft:#A2AAB9;
+  --ink-faint:#79818F;
+  --rule:#2B323F;
+  --rule-soft:#232935;
+  --accent:#8DA8E6;
+  --accent-soft:#1C2540;
+  --ok:#63B993;
+  --ok-soft:#16291F;
+  --warn:#D2A44C;
+  --warn-soft:#2A2314;
+  --alert:#E07B80;
+  --alert-soft:#2E1719;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+
+.masthead{padding:64px 0 0}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-faint);margin:0 0 20px
+}
+h1{
+  font-family:var(--display);font-weight:600;font-size:clamp(38px,6vw,60px);
+  line-height:1.02;letter-spacing:-.02em;margin:0;text-wrap:balance;
+}
+.standfirst{
+  font-family:var(--display);font-size:clamp(17px,2vw,20px);font-style:italic;
+  color:var(--ink-soft);max-width:62ch;margin:18px 0 0;line-height:1.5
+}
+.stave{
+  height:17px;margin:36px 0 0;
+  background:repeating-linear-gradient(to bottom,
+    var(--rule) 0 1px, transparent 1px 4px);
+  opacity:.9;
+}
+
+.locked{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));
+  gap:1px;background:var(--rule-soft);border:1px solid var(--rule-soft);
+  margin:40px 0 0;border-radius:3px;overflow:hidden
+}
+.locked div{background:var(--surface);padding:14px 16px}
+.locked dt{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);margin:0 0 5px
+}
+.locked dd{margin:0;font-size:14px;font-weight:500;line-height:1.35}
+
+section{margin:72px 0 0;scroll-margin-top:24px}
+h2{
+  font-family:var(--display);font-weight:600;font-size:29px;letter-spacing:-.015em;
+  margin:0 0 6px;text-wrap:balance
+}
+h2 .num{
+  font-family:var(--mono);font-size:12px;font-weight:400;color:var(--accent);
+  letter-spacing:.1em;display:block;margin-bottom:9px
+}
+h3{font-family:var(--body);font-weight:600;font-size:15.5px;margin:34px 0 10px;letter-spacing:-.005em}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+   color:var(--ink-faint);font-weight:500;margin:26px 0 8px}
+p{margin:0 0 14px;max-width:68ch}
+.lede{color:var(--ink-soft);max-width:68ch;margin-bottom:22px}
+ul,ol{margin:0 0 14px;padding-left:20px;max-width:68ch}
+li{margin:0 0 7px}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.88em}
+p code,li code,td code{
+  background:var(--surface-2);padding:1px 5px;border-radius:3px;
+  border:1px solid var(--rule-soft)
+}
+strong{font-weight:600}
+
+.tablewrap{overflow-x:auto;margin:0 0 18px;border:1px solid var(--rule-soft);border-radius:4px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th{
+  text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-faint);font-weight:500;
+  padding:11px 14px;border-bottom:1px solid var(--rule);white-space:nowrap
+}
+td{padding:11px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.key{font-family:var(--mono);font-size:12.5px;white-space:nowrap;color:var(--ink)}
+
+.pill{
+  display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  padding:2px 7px;border-radius:20px;white-space:nowrap;font-weight:500
+}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.alert{background:var(--alert-soft);color:var(--alert)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+
+.note{
+  border-left:2px solid var(--accent);background:var(--surface);
+  padding:14px 18px;margin:22px 0;border-radius:0 4px 4px 0;box-shadow:var(--shadow)
+}
+.note.flag{border-left-color:var(--alert)}
+.note p{margin:0;font-size:14.5px}
+.note p + p{margin-top:9px}
+.note .tag{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);display:block;margin-bottom:6px
+}
+
+.pipe{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0 6px
+}
+.stage{
+  background:var(--surface);border:1px solid var(--rule-soft);border-top:2px solid var(--accent);
+  border-radius:0 0 4px 4px;padding:13px 14px
+}
+.stage .s{font-family:var(--mono);font-size:10.5px;color:var(--accent);letter-spacing:.1em;display:block;margin-bottom:6px}
+.stage b{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
+.stage span.d{font-size:12.5px;color:var(--ink-soft);line-height:1.45;display:block}
+
+.phase{
+  display:grid;grid-template-columns:64px 1fr;gap:20px;
+  padding:20px 0;border-top:1px solid var(--rule-soft);align-items:start
+}
+.phase:first-of-type{border-top:1px solid var(--rule)}
+.phase .pn{
+  font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.08em;padding-top:3px
+}
+.phase h3{margin:0 0 6px;font-size:16px}
+.phase p{margin:0 0 10px;font-size:14.5px;color:var(--ink-soft)}
+.phase ul{margin:0;font-size:14px}
+.phase li{margin-bottom:5px}
+.ship{margin-top:10px;font-size:13px}
+
+pre{
+  background:var(--surface);border:1px solid var(--rule-soft);border-radius:4px;
+  padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;
+  line-height:1.6;margin:0 0 18px;color:var(--ink)
+}
+pre .c{color:var(--ink-faint)}
+
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px;margin-bottom:8px}
+.cols > div > p:last-child{margin-bottom:0}
+
+footer{
+  margin:80px 0 0;padding-top:22px;border-top:1px solid var(--rule);
+  font-size:13px;color:var(--ink-faint);max-width:68ch
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Build plan &middot; self-hosted &middot; 2 September 2026</p>
+  <h1>Sheet Music Shelf</h1>
+  <p class="standfirst">A cataloguing server for 3,686&nbsp;PDF scores &mdash; piece-level, page-accurate, and honest about how sure it is.</p>
+  <div class="stave" role="presentation"></div>
+
+  <dl class="locked">
+    <div><dt>Storage</dt><dd>Postgres, own container</dd></div>
+    <div><dt>Server</dt><dd>Python &middot; FastAPI</dd></div>
+    <div><dt>Front end</dt><dd>Server-rendered + HTMX, PWA</dd></div>
+    <div><dt>Granularity</dt><dd>Piece, with page ranges</dd></div>
+    <div><dt>Files</dt><dd>Copied to managed tree</dd></div>
+    <div><dt>Guessing</dt><dd>Deterministic + confidence</dd></div>
+    <div><dt>Auth</dt><dd>authentik OIDC</dd></div>
+    <div><dt>Offline</dt><dd>Not required &mdash; LAN/VPN</dd></div>
+  </dl>
+</header>
+
+<section id="survey">
+  <h2><span class="num">I</span>What the library actually contains</h2>
+  <p class="lede">Measured, not assumed. Two random samples were parsed with <code>pypdf</code> straight off the NAS &mdash; 220 files for structure, 400 for embedded metadata, plus a full pass over all 3,686 filenames.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Signal</th><th class="num">Coverage</th><th>What it means for the build</th></tr></thead>
+      <tbody>
+        <tr><td>Total PDFs / total size</td><td class="num">3,686 &middot; 5.45&nbsp;GB</td><td>Small enough that copying to a managed tree costs nothing</td></tr>
+        <tr><td>Files that parse cleanly</td><td class="num">100%</td><td>No corruption-repair stage needed</td></tr>
+        <tr><td>Embedded outline / bookmarks</td><td class="num">40.9%</td><td>Free piece-splitting for ~1,500 files</td></tr>
+        <tr><td>Outline on files &gt;20&nbsp;pages</td><td class="num">57 of 60</td><td><strong>The anthologies are bookmarked.</strong> Splitting is mostly automatic</td></tr>
+        <tr><td>Extractable text layer</td><td class="num">12.7%</td><td>Library is overwhelmingly image scans &mdash; text heuristics are a minor signal</td></tr>
+        <tr><td>Median / p90 / max pages</td><td class="num">6 &middot; 27 &middot; 378</td><td>87% are short: one file = one piece. Only ~470 are books</td></tr>
+        <tr><td>Filenames as <code>Artist - Title</code></td><td class="num">15.0%</td><td>Filename parsing alone is not a strategy</td></tr>
+        <tr><td>Cryptic filename stubs</td><td class="num">38.0%</td><td><code>cho11_m2</code>, <code>bwv772</code>, <code>k0179</code> &mdash; but the folder names the composer, and the stub often <em>is</em> a catalogue number</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Three collections, three completely different metadata problems</h3>
+  <p>This is the finding that shapes the whole design. Guess quality is not a property of the library; it is a property of each collection. So the ingester is a set of small, per-collection <strong>adapters</strong>, not one global heuristic.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Collection</th><th class="num">Approx.</th><th>Best available signal</th><th>Expected quality</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="key">CD Sheet Music/*</td><td class="num">~1,500</td>
+          <td>DocInfo <code>/Subject</code> carries composer, title, key, catalogue no. and page span. Plus a text-extractable <code>toc.pdf</code> per disc.</td>
+          <td><span class="pill ok">high</span></td>
+        </tr>
+        <tr>
+          <td class="key">The Sheet Music Archive/*</td><td class="num">~1,200</td>
+          <td>No DocInfo. Folder = composer (<code>chopin</code>, <code>beethovn</code>); filename stub encodes opus/catalogue number.</td>
+          <td><span class="pill warn">medium</span> &mdash; needs authority lookup</td>
+        </tr>
+        <tr>
+          <td class="key">Sheet Music Collection/</td><td class="num">~1,000</td>
+          <td>Flat folder, <code>NNN - Artist - Title.pdf</code>. Popular repertoire, duplicates present (<code>(v2)</code> suffixes, two spellings of the same song).</td>
+          <td><span class="pill warn">medium</span> &mdash; needs dedup</td>
+        </tr>
+        <tr>
+          <td class="key">Everything else</td><td class="num">~1,000</td>
+          <td>Named editions (Bach Leipzig, Schubert vols. 1&ndash;7, Liszt Exercises) &mdash; handled per-collection as you reach them.</td>
+          <td><span class="pill info">case by case</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>The <code>/Subject</code> find</h4>
+  <p>Every file in the CD Sheet Music discs carries a machine-readable subject line. From <code>Mozart&nbsp;-&nbsp;The Complete Works for Piano/works/k0001.pdf</code>:</p>
+<pre>/Subject : "Mozart:  Minuet in G Major, K1, P1 of 1"
+/Title   : "CD Sheet Music" by Stephens Publishing Company
+
+<span class="c">observed variants across discs:</span>
+"Brahms:   Intermezzo, A Maj, Op118 #2, P380-383"
+"Haydn:  Sonata in Eb Major, Hoboken 28, P1-12"
+"JS Bach: 4 Part Chorales 300-371, P144-178"
+"Brahms: SP Hungarian 9 in Emi, JBP9, P449-450"</pre>
+  <p>Composer, work title, key, catalogue system and number, and the page range &mdash; already structured. One adapter with a tolerant grammar for this line resolves roughly 40% of the library at high confidence, and it is exactly the piece-and-page-range model the catalogue needs.</p>
+
+  <div class="note flag">
+    <span class="tag">Junk to exclude</span>
+    <p>The discs ship software with the music: <code>readme/</code> folders, 10 <code>.exe</code>, 6 <code>.iso</code>, Acrobat password crackers, PhotoScore installers, Mac resource-fork stubs. Each adapter declares ignore globs; nothing outside a declared music path is ever catalogued.</p>
+  </div>
+</section>
+
+<section id="architecture">
+  <h2><span class="num">II</span>Architecture, and the constraints it bends to</h2>
+  <p class="lede">This lands on a 4-core NUC already carrying ~45 containers, with the library on a CIFS mount that only resolves inside the Ubuntu-24.04 WSL distro. Every choice below is made against that, not against a clean-slate ideal.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Component</th><th>Choice</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>API + UI</td><td class="key">FastAPI + Uvicorn</td><td>Jinja server-rendering with HTMX for the interactive bits. Best-in-class PDF tooling (<code>pymupdf</code>), and no Node build step to maintain.</td></tr>
+        <tr><td>Database</td><td class="key">postgres:16, own container</td><td>Matches the mealie / paperless / romm pattern already in the stack: independent backup, no shared blast radius.</td></tr>
+        <tr><td>Job queue</td><td class="key">Postgres-backed, no Redis</td><td>Scanning and thumbnailing must not block requests, but a fifth Redis on this box is not worth 100&nbsp;MB. A <code>job</code> table with <code>SELECT &hellip; FOR UPDATE SKIP LOCKED</code> is sufficient at this scale.</td></tr>
+        <tr><td>Worker</td><td class="key">Same image, <code>--worker</code>, 1 process</td><td>Separate container so a long scan can be stopped without taking the UI down. Hard-capped at 1 CPU.</td></tr>
+        <tr><td>Search</td><td class="key">Postgres full-text (<code>tsvector</code>)</td><td>A few thousand works and maybe 15k pieces. Meilisearch would be a second service for no gain.</td></tr>
+        <tr><td>Auth</td><td class="key">authentik OIDC</td><td>Auth-code + PKCE, mirroring <code>mealie.yml</code>. Long-lived revocable device tokens are added in the phone phase.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Compose shape</h3>
+<pre><span class="c"># Z:\docker\compose\sheetmusicshelf.yml  — bring up from WSL space only:
+#   wsl bash -c "cd /mnt/z/docker/compose && docker compose -f sheetmusicshelf.yml up -d"</span>
+name: sheetmusicshelf
+services:
+  sheetmusicshelf:          <span class="c"># FastAPI, port 8014:8000</span>
+  sheetmusicshelf-worker:   <span class="c"># same image, cpus: 1, no published port</span>
+  postgres-sheetmusicshelf: <span class="c"># NOT published — 5432 is already taken by mealie's</span>
+
+volumes:                                        <span class="c"># named volumes, per stack convention</span>
+  sheetmusicshelf-pgdata                        <span class="c">#   database</span>
+  sheetmusicshelf-cache                         <span class="c">#   thumbnails, extracted text, derived files</span>
+
+binds:
+  /mnt/z/Books/Music:/library/source:ro         <span class="c">#   read-only. never written to.</span>
+  /mnt/z/Books/SheetMusic:/library/managed:rw   <span class="c">#   the managed tree it builds</span></pre>
+
+  <div class="cols">
+    <div>
+      <h4>Deliberate details</h4>
+      <ul>
+        <li><strong>Source mount is <code>:ro</code>.</strong> The plan says copy, never move &mdash; the mount enforces it, so a bug cannot eat the originals.</li>
+        <li><strong>Thumbnails go on a volume, not CIFS.</strong> Tens of thousands of small files over SMB is the same trap as SQLite-on-CIFS.</li>
+        <li><strong>Port 8014</strong> &mdash; 8010&ndash;8012 are taken by paperless, 8008 and 8002 by others.</li>
+        <li><strong>nautical labels</strong> on the app and the DB, with <code>OVERRIDE_SOURCE_DIR</code> pointed at <code>sheetmusicshelf-pgdata</code> (the cache volume is regenerable).</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Resource budget</h4>
+      <ul>
+        <li>App <code>512M</code> / <code>cpus: 1</code>; worker <code>512M</code> / <code>cpus: 1</code>; Postgres <code>256M</code>.</li>
+        <li>The worker self-throttles: a scan yields between files and pauses when <code>/proc/loadavg</code> exceeds a configured ceiling. On this box a background job that ignores load is a box-wide outage.</li>
+        <li>A full library scan over CIFS is minutes, not seconds &mdash; it is a job with progress, never a request.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="model">
+  <h2><span class="num">III</span>Data model</h2>
+  <p class="lede">The one structural decision everything else depends on: <strong>the file is not the catalogue entry.</strong> A work is what you look for; a file is where a copy of it happens to live; a piece is the page range inside that file. Separating those three is what makes <em>pages 380&ndash;383 of the Brahms complete edition</em> a first-class thing you can shelve, filter and open.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Table</th><th>Holds</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="key">composer</td><td>Canonical name, name variants, birth/death, MusicBrainz &amp; IMSLP ids</td><td>An authority record, so <code>beethovn</code>, <code>Beethoven, L. van</code> and <code>Ludwig van Beethoven</code> collapse to one entity</td></tr>
+        <tr><td class="key">work</td><td>Composer, title, catalogue system + number, key, year, form/genre, <code>parent_work_id</code></td><td>Self-referencing: Sonata K.280 is a work with three movement-works beneath it. Catalogue number splits into <code>system</code> (<code>K</code>, <code>BWV</code>, <code>Op</code>, <code>Hob</code>, <code>D</code>) + <code>number</code> + <code>suffix</code> so sorting is numeric, not lexical</td></tr>
+        <tr><td class="key">source_file</td><td>Original path, SHA-256, size, mtime, page count, collection, managed path</td><td>Hash-keyed, so a file renamed outside the app re-links on rescan instead of duplicating</td></tr>
+        <tr><td class="key">piece</td><td><strong>work &times; source_file + <code>page_start</code>, <code>page_end</code></strong>, instrumentation, arranger, edition, publisher, confidence, review state</td><td>The browsable catalogue entry. One file yields many pieces; one work has many pieces across editions</td></tr>
+        <tr><td class="key">collection</td><td>Source folder, adapter name, ignore globs, ingest status, thresholds</td><td>The unit of work &mdash; you ingest and review one collection at a time</td></tr>
+        <tr><td class="key">instrument</td><td>Controlled vocabulary + aliases</td><td>Many-to-many to <code>piece</code> with a role (solo / accompaniment / voice), so &ldquo;piano four hands&rdquo; and &ldquo;high voice + piano&rdquo; are queryable</td></tr>
+        <tr><td class="key">shelf, shelf_item</td><td>User-defined collections</td><td>Calibre-style. Ordered, so a shelf doubles as a setlist</td></tr>
+        <tr><td class="key">field_candidate</td><td>Piece, field name, proposed value, source, weight, accepted-by, accepted-at</td><td>The audit trail behind every guess &mdash; see next section</td></tr>
+        <tr><td class="key">app_user, annotation</td><td>OIDC subject; annotation reserved for later</td><td>Annotations stored as a layer keyed to page + coordinates, never burned into the PDF</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Fixed personal fields on <code>piece</code></h4>
+  <p>Per your call &mdash; a defined set rather than runtime-definable columns: <code>difficulty</code> (1&ndash;10, nullable), <code>status</code> (unplayed / learning / repertoire / retired), <code>rating</code> (0&ndash;5), <code>notes</code> (free text), <code>tags</code> (free), <code>last_opened</code>. Adding one later is a migration, not a redesign.</p>
+</section>
+
+<section id="ingest">
+  <h2><span class="num">IV</span>Ingest, and what &ldquo;confidence&rdquo; actually means</h2>
+  <p class="lede">No LLM in this pipeline. Every number it produces is traceable to a rule that fired, which is the entire point &mdash; a confidence score you cannot explain is worse than no score, because you cannot decide what to review.</p>
+
+  <div class="pipe">
+    <div class="stage"><span class="s">01</span><b>Walk</b><span class="d">Enumerate the collection, apply ignore globs, hash each file, record page count.</span></div>
+    <div class="stage"><span class="s">02</span><b>Extract</b><span class="d">DocInfo, outline tree, per-page text where a text layer exists.</span></div>
+    <div class="stage"><span class="s">03</span><b>Adapt</b><span class="d">The collection&rsquo;s adapter turns raw signals into field candidates.</span></div>
+    <div class="stage"><span class="s">04</span><b>Resolve</b><span class="d">Match composer and catalogue number against the authority cache; merge agreeing candidates.</span></div>
+    <div class="stage"><span class="s">05</span><b>Score</b><span class="d">Per-field confidence, then a piece-level score. Route to auto-accept or the review queue.</span></div>
+    <div class="stage"><span class="s">06</span><b>Materialise</b><span class="d">Copy accepted items into the managed tree, render thumbnails.</span></div>
+  </div>
+
+  <h3>Scoring</h3>
+  <p>Each signal proposes a value for a field with a base weight. Independent signals that <em>agree</em> reinforce; signals that conflict cap the field&rsquo;s confidence and flag it. The piece&rsquo;s confidence is the minimum across its identifying fields &mdash; composer, title, page range &mdash; because a piece is only as trustworthy as its weakest identifier.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Signal</th><th class="num">Base weight</th><th>Fields it can propose</th></tr></thead>
+      <tbody>
+        <tr><td>Parsed DocInfo <code>/Subject</code> (CD Sheet Music grammar)</td><td class="num">0.85</td><td>composer, title, key, catalogue no., page range</td></tr>
+        <tr><td>PDF outline entry with a resolvable page destination</td><td class="num">0.80</td><td>title, page range</td></tr>
+        <tr><td>Catalogue number matched in the authority cache</td><td class="num">0.80</td><td>work identity, canonical title, key, year</td></tr>
+        <tr><td>Parent folder matches a known composer alias</td><td class="num">0.70</td><td>composer</td></tr>
+        <tr><td>Collection-level default (e.g. the disc is solo piano)</td><td class="num">0.60</td><td>instrumentation</td></tr>
+        <tr><td>Filename pattern <code>NNN - Artist - Title</code></td><td class="num">0.55</td><td>composer/artist, title</td></tr>
+        <tr><td>Catalogue-number regex on a cryptic stub (<code>bwv772</code>)</td><td class="num">0.50</td><td>catalogue no.</td></tr>
+        <tr><td>First-page text heuristics</td><td class="num">0.35</td><td>title, composer</td></tr>
+        <tr><td>On-demand OCR of pages 1&ndash;2</td><td class="num">0.35</td><td>title, composer</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="tag">Routing</span>
+    <p><span class="pill ok">&ge; 0.80 auto-accept</span> &nbsp;<span class="pill warn">0.50&ndash;0.79 review queue</span> &nbsp;<span class="pill alert">&lt; 0.50 or conflicting &mdash; held</span></p>
+    <p>Thresholds are per-collection settings, not constants &mdash; you will want them stricter on the pop pile than on the CD Sheet Music discs. Nothing is ever silently overwritten: accepting a candidate records who accepted it and when, and rejected alternatives stay in <code>field_candidate</code> so a bad adapter can be re-run without losing your corrections.</p>
+  </div>
+
+  <h3>OCR</h3>
+  <p>On demand only, as agreed. No bulk pass. The review UI shows an <em>OCR title page</em> button on any item with no text layer; it queues a single tesseract job over pages 1&ndash;2 and folds the result back in as another weighted signal. On this hardware a background pass over the ~3,200 image-only files would be a multi-day tax on a box already at its limit.</p>
+
+  <h3>Duplicates</h3>
+  <p>Exact duplicates are free &mdash; same hash. Near-duplicates, such as <code>108 - Animals - The House Of Rising Sun.pdf</code> beside <code>108 - The Animals - House Of The Rising Sun.pdf</code>, or anything ending <code>(v2)</code>, are detected by normalised-title similarity plus page count and surfaced as a possible-duplicate pair. You merge them, keep both as editions of one work, or dismiss. Never auto-deleted.</p>
+</section>
+
+<section id="claude">
+  <h2><span class="num">V</span>Where the LLM fits, without living in the app</h2>
+  <p class="lede">You want to use a model for the messy parts but not ship one inside the service. That is a clean separation, and the seam is an HTTP API rather than a file export &mdash; external curation tools are first-class clients, not a workaround. <span class="pill ok">built</span></p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="key">GET /curation/queue</td><td>Uncertain pieces, each with <strong>every candidate value, its source and its weight</strong>, plus which fields are missing or conflicted. You can see <em>why</em> a piece is uncertain before proposing anything.</td></tr>
+        <tr><td class="key">GET /curation/pieces/{id}/text</td><td>DocInfo, PDF outline and extracted text for the opening pages. Empty for image-only scans &mdash; the queue item says so in advance rather than making you ask.</td></tr>
+        <tr><td class="key">POST /curation/candidates</td><td><strong>Propose.</strong> Scored, not applied: agreeing with an existing signal raises confidence, disagreeing flags a conflict and holds the piece.</td></tr>
+        <tr><td class="key">POST /curation/decisions</td><td><strong>Decide.</strong> Final &mdash; cannot be outvoted by a later signal of any weight, and survives a re-scan.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Tokens are minted per tool (<code>sms token create claude-curation</code>), scoped, revocable, and stored hashed. The result: no API key in the container, no per-item cost baked into the product, no dependency on a model staying available &mdash; and the hard collections still get the benefit.</p>
+
+  <div class="note">
+    <span class="tag">Verified</span>
+    <p>Round-trip tested against the live API: a proposal at weight 0.65 moved a piece from <em>hold</em> to <em>review</em>; a decision made the value final; a later contradicting proposal at weight 0.99 could not displace it; and a full re-scan of the collection left the decision intact without creating duplicate entries.</p>
+  </div>
+</section>
+
+<section id="ui">
+  <h2><span class="num">VI</span>Web UI and the phone</h2>
+  <div class="cols">
+    <div>
+      <h4>Desktop &mdash; cataloguing</h4>
+      <ul>
+        <li><strong>Browse</strong> with faceted filters: composer, instrument, form/genre, key, period, catalogue system, collection, shelf, status.</li>
+        <li><strong>Review queue</strong> per collection: proposed values, the signals that produced them, the page thumbnail alongside. Accept, edit or reject from the keyboard.</li>
+        <li><strong>Page-range editor</strong> for the ~470 anthologies: a thumbnail strip with draggable split markers, pre-populated from the outline where one exists. This is the authoritative fallback and gets built regardless.</li>
+        <li><strong>Work view</strong>: every edition and copy of a work side by side, so you can pick the good scan.</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Phone &mdash; PWA</h4>
+      <ul>
+        <li>Same server, responsive templates, installable to the homescreen. No app store, no build pipeline.</li>
+        <li>Reader is PDF.js opened at the piece&rsquo;s <code>page_start</code>, so a piece inside a 378-page volume opens on the right page.</li>
+        <li>Portrait single page, landscape two-up, tap zones for page turns.</li>
+        <li>Online-only by your call &mdash; but the reader talks to a byte-range endpoint, so PDF.js streams pages instead of pulling a 50&nbsp;MB file. That is what makes it usable over the VPN.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="tag">Kept open for later</span>
+    <p>Annotation is the reason to eventually go native. Storing annotations as a coordinate layer against <code>piece</code> and page &mdash; not flattened into the PDF &mdash; means the native app, when it comes, inherits everything made in the browser, and your originals stay pristine. The schema carries the table from day one; nothing else changes.</p>
+  </div>
+</section>
+
+<section id="phases">
+  <h2><span class="num">VII</span>Phases</h2>
+  <p class="lede">Ordered so the thing you said makes v1 useful &mdash; browse, filter, open on the phone &mdash; arrives before the deep cataloguing tooling. Each phase ends at something you can actually use.</p>
+
+  <div class="note">
+    <span class="tag">Progress</span>
+    <p><span class="pill ok">P0 and P1 are built</span> &nbsp;Signal extraction, the CD Sheet Music and generic adapters, the scorer, Postgres persistence with human-decision precedence, the curation API, byte-range PDF serving and the compose deployment all run. 61 tests. The Mozart collection is catalogued: <strong>79 accept / 4 review / 4 hold</strong> of 87 pieces.</p>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P0</div>
+    <div>
+      <h3>Skeleton <span class="pill ok">done</span></h3>
+      <p>Repo, schema, container, login. No music yet.</p>
+      <ul>
+        <li>FastAPI app, Alembic migrations for the model in &sect;III, Postgres container</li>
+        <li><code>sheetmusicshelf.yml</code> with nautical labels, resource caps, read-only source bind</li>
+        <li>authentik OIDC client and a working login round-trip</li>
+      </ul>
+      <p class="ship"><span class="pill info">ships</span> &nbsp;An empty, authenticated, backed-up service on <code>:8014</code>.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P1</div>
+    <div>
+      <h3>Ingest, proven on one collection <span class="pill ok">done</span></h3>
+      <p>Scanner, job queue, the <code>cdsheetmusic</code> adapter and the confidence machinery &mdash; validated end to end on <em>Mozart &mdash; The Complete Works for Piano</em> before it touches anything else.</p>
+      <ul>
+        <li>Walk, hash, extract; <code>field_candidate</code> populated with weights</li>
+        <li><code>/Subject</code> grammar, <code>toc.pdf</code> parser, K&ouml;chel-number resolution</li>
+        <li><code>sms ingest &lt;collection&gt;</code> and <code>sms report &lt;collection&gt;</code> &mdash; a text report of what it guessed and how sure, reviewable before a single row is committed</li>
+      </ul>
+      <p class="ship"><span class="pill info">ships</span> &nbsp;94 Mozart files catalogued as works with K&ouml;chel numbers, keys and page ranges &mdash; and a number telling you how much of it to trust.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P2</div>
+    <div>
+      <h3>Browse, filter, and read on the phone</h3>
+      <p>The v1 you defined.</p>
+      <ul>
+        <li>Faceted browse and full-text search over whatever is catalogued</li>
+        <li>Managed-tree copier writing <code>/mnt/z/Books/SheetMusic/&lt;Composer&gt;/&lt;Work&gt;/&hellip;</code>, originals untouched</li>
+        <li>PWA reader with byte-range streaming and a deep-linked page start</li>
+      </ul>
+      <p class="ship"><span class="pill info">ships</span> &nbsp;You can find a Mozart sonata by key on your phone and it opens on the right page.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P3</div>
+    <div>
+      <h3>Review tooling, then the rest of the collections</h3>
+      <ul>
+        <li>Review queue UI, keyboard-driven, with thumbnails and signal provenance</li>
+        <li>Page-range editor for anthologies; on-demand OCR button</li>
+        <li>Duplicate detection and merge</li>
+        <li>Adapters for <code>The Sheet Music Archive</code> and <code>Sheet Music Collection</code>; the curation export/import CLI</li>
+      </ul>
+      <p class="ship"><span class="pill info">ships</span> &nbsp;A workflow for grinding through the remaining ~3,600 files at your own pace.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P4</div>
+    <div>
+      <h3>Authority enrichment</h3>
+      <ul>
+        <li>MusicBrainz client (1&nbsp;req/s, identifying User-Agent) and IMSLP MediaWiki lookups, both cached locally so each work is fetched once</li>
+        <li>Backfill canonical titles, dates, periods and forms; reconcile composer name variants</li>
+      </ul>
+      <p class="ship"><span class="pill info">ships</span> &nbsp;A catalogue that sorts and filters like a proper library rather than like a folder listing.</p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P5</div>
+    <div>
+      <h3>Shelves and personal fields</h3>
+      <ul>
+        <li>Ordered shelves doubling as setlists; difficulty, status, rating, notes, tags</li>
+        <li>Practice-oriented views: what you are learning, what you have not opened in a year</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="pn">P6</div>
+    <div>
+      <h3>Later, deliberately unscheduled</h3>
+      <ul>
+        <li>Native Kotlin client with offline caching and in-app annotation, reading the annotation layer the schema already carries</li>
+        <li>MusicXML and MuseScore ingest &mdash; the model already separates work from file, so a new format is a new extractor, not a migration</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="first">
+  <h2><span class="num">VIII</span>First target, concretely</h2>
+  <p class="lede"><code>Z:\Books\Music\CD Sheet Music\Mozart - The Complete Works for Piano</code> &mdash; 94 PDFs. It is the right first collection because it is the best-instrumented one in the library, so a poor result there means the approach is wrong, not the data.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Path</th><th>Treatment</th></tr></thead>
+      <tbody>
+        <tr><td class="key">works/k0001.pdf &hellip; k0626.pdf</td><td>Primary music. The filename stub gives the K&ouml;chel number, <code>/Subject</code> gives title, key and page span; both must agree or the piece is held for review.</td></tr>
+        <tr><td class="key">music/k279-08r2.pdf, mozk455.pdf</td><td>Alternate takes and revisions with irregular names. Falls back to <code>/Subject</code> alone; expect these in the review queue.</td></tr>
+        <tr><td class="key">toc.pdf</td><td>Text-extractable, structured <code>TITLE / K. FILENAME / PGS</code> columns under headings like <em>Sonatas and Fantasies</em>. Parsed as an independent second signal &mdash; agreement with <code>/Subject</code> is what pushes items over the auto-accept line, and its headings seed the form/genre field.</td></tr>
+        <tr><td class="key">readme/</td><td>Ignored by glob.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Expected outcome: the great majority auto-accepted with composer, K&ouml;chel number, title, key, form and page range; a short tail of alternates to review by hand. That tail is the real measurement &mdash; it tells us what the adapter grammar is missing before we point it at 1,400 more files.</p>
+</section>
+
+<section id="risks">
+  <h2><span class="num">IX</span>Risks and open questions</h2>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td><strong>audiobookshelf mounts <code>/mnt/z/Books</code></strong> <span class="pill ok">not an issue</span></td><td>It only <em>indexes</em> <code>Books\_Calibre Library</code>, so a managed tree at <code>Z:\Books\SheetMusic</code> does not collide with it. Settled.</td></tr>
+        <tr><td><strong>The box is already at its limit</strong></td><td>Hard CPU and memory caps, a single worker, load-aware throttling, no Redis, no bulk OCR, no second search engine. This service has to be a quiet neighbour.</td></tr>
+        <tr><td><strong>CIFS scan latency</strong> &mdash; 3,686 files over SMB, competing with GoodSync</td><td>Scanning is an incremental job keyed on mtime and size; a rescan touches only what changed. Never a synchronous request.</td></tr>
+        <tr><td><strong>Adapter grammars will be wrong at first</strong></td><td>Ingest is idempotent and re-runnable: candidates are versioned by source, and human decisions permanently outrank machine ones, so re-running a fixed adapter never destroys your review work.</td></tr>
+        <tr><td><strong>Docker Desktop&rsquo;s bind-mount shim</strong> breaks containers on restart</td><td>Known stack issue; the repo README carries the <code>--force-recreate</code>-from-WSL-space recipe.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Open, and worth deciding before P2</h4>
+  <ul>
+    <li><strong>Naming scheme in the managed tree</strong> &mdash; <code>Composer/Work (Cat. no.)/edition.pdf</code> is the proposal, but anthologies are the awkward case: a 378-page volume holding 60 pieces cannot be filed under one work. Proposal: books stay filed under their collection, and only single-work files are filed by composer.</li>
+    <li><strong>Instrumentation vocabulary</strong> &mdash; start with a small hand-written list (solo piano, piano four hands, voice and piano, organ, chamber, orchestral score, lead sheet) and grow it, rather than importing a standard taxonomy you would then have to maintain.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Decisions here reflect the interview of 2 September 2026 and measurements taken from <code>Z:\Books\Music</code> the same day: 3,686 PDFs, 5.45&nbsp;GB, sampled with <code>pypdf</code>. Percentages come from random samples of 220 and 400 files; filename statistics are a full pass over all 3,686.</p>
+</footer>
+
+</div>

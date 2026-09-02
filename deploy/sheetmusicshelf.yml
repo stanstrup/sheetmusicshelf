@@ -1,0 +1,114 @@
+# Sheet Music Shelf -- copy to Z:\docker\compose\sheetmusicshelf.yml
+#
+# MUST be brought up from WSL space, or /mnt/z resolves to an empty path and the
+# library binds come up empty:
+#   wsl bash -c "cd /mnt/z/docker/compose && docker compose -f sheetmusicshelf.yml up -d"
+#
+# Secrets live in .sheetmusicshelf.env and .sheetmusicshelf-db.env (gitignored
+# by the stack's *.env rule).  See .env.example in this repo.
+
+name: sheetmusicshelf
+
+services:
+  sheetmusicshelf:
+    image: sheetmusicshelf:latest
+    build:
+      context: /mnt/z/docker/build/sheetmusicshelf
+    container_name: sheetmusicshelf
+    labels:
+      - "nautical-backup.enable=true"
+      - "nautical-backup.stop-before-backup=true"
+    restart: unless-stopped
+    ports:
+      # 8010-8012 are paperless, 8008 and 8002 are taken; 8014 is free.
+      - "8014:8000"
+    env_file: .sheetmusicshelf.env
+    environment:
+      TZ: Europe/Copenhagen
+      SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
+      SMS_SOURCE_ROOT: /library/source
+      SMS_MANAGED_ROOT: /library/managed
+      SMS_CACHE_ROOT: /cache
+      SMS_BASE_URL: https://sheetmusic.agnostan.org
+      SMS_OIDC_ISSUER: https://auth.agnostan.org/application/o/sheetmusicshelf/
+      SMS_LOAD_CEILING: "6"
+    volumes:
+      # Read-only, deliberately: the design says "copy, never move", and the
+      # mount is what enforces it if the code ever gets it wrong.
+      - /mnt/z/Books/Music:/library/source:ro
+      # The managed tree the app builds.  audiobookshelf only indexes
+      # Books/_Calibre Library, so this does not collide with it.
+      - /mnt/z/Books/SheetMusic:/library/managed:rw
+      # Thumbnails and extracted text: thousands of small files, so a named
+      # volume rather than CIFS (same reason SQLite configs live on volumes).
+      - sheetmusicshelf-cache:/cache
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    depends_on:
+      postgres-sheetmusicshelf:
+        condition: service_healthy
+
+  sheetmusicshelf-worker:
+    image: sheetmusicshelf:latest
+    container_name: sheetmusicshelf-worker
+    command: ["worker"]
+    restart: unless-stopped
+    env_file: .sheetmusicshelf.env
+    environment:
+      TZ: Europe/Copenhagen
+      SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
+      SMS_SOURCE_ROOT: /library/source
+      SMS_MANAGED_ROOT: /library/managed
+      SMS_CACHE_ROOT: /cache
+      # The worker pauses between files while the 1-minute load average is above
+      # this.  On a 4-core box carrying ~45 containers, a scan that ignores load
+      # is not a slow scan -- it is an outage for everything else.
+      SMS_LOAD_CEILING: "6"
+    volumes:
+      - /mnt/z/Books/Music:/library/source:ro
+      - /mnt/z/Books/SheetMusic:/library/managed:rw
+      - sheetmusicshelf-cache:/cache
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    depends_on:
+      sheetmusicshelf:
+        condition: service_started
+
+  postgres-sheetmusicshelf:
+    image: postgres:16
+    container_name: postgres-sheetmusicshelf
+    labels:
+      - "nautical-backup.enable=true"
+      - "nautical-backup.stop-before-backup=true"
+    restart: unless-stopped
+    # Deliberately NOT published: host 5432 already belongs to mealie's postgres.
+    env_file: .sheetmusicshelf-db.env
+    environment:
+      POSTGRES_USER: sms
+      POSTGRES_DB: sms
+      PGUSER: sms
+      TZ: Europe/Copenhagen
+      PGTZ: Europe/Copenhagen
+    volumes:
+      - sheetmusicshelf-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  sheetmusicshelf-pgdata:
+    name: sheetmusicshelf-pgdata
+  sheetmusicshelf-cache:
+    name: sheetmusicshelf-cache

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ piece.title or "Untitled" }}{% endblock %}
+{% block bodyclass %}reading{% endblock %}
+
+{% block chrome %}
+<header class="readerbar" id="readerbar">
+  <a class="back" href="/piece/{{ piece.id }}" aria-label="Back to details">&larr;</a>
+  <div class="what">
+    <span class="t">{{ piece.title or "Untitled" }}</span>
+    <span class="c">{{ piece.composer_name or "" }}</span>
+  </div>
+  <div class="tools">
+    <span class="progress" id="progress">1 / {{ pages|length }}</span>
+    <a class="spread-toggle" href="?spread={{ 0 if spread else 1 }}">{{ "Single" if spread else "Two-up" }}</a>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="pages {{ 'two-up' if spread }}" id="pages" tabindex="-1">
+  {% for n in pages %}
+    <figure class="page" data-page="{{ n }}">
+      <img src="/api/v1/pieces/{{ piece.id }}/pages/{{ n }}?width=1200"
+           alt="Page {{ n }} of {{ piece.title or 'this piece' }}"
+           onload="this.classList.add('loaded')"
+           {% if n <= 2 %}fetchpriority="high"{% else %}loading="lazy"{% endif %}>
+    </figure>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var pagesEl = document.getElementById("pages");
+  var progress = document.getElementById("progress");
+  var bar = document.getElementById("readerbar");
+  var figures = Array.prototype.slice.call(pagesEl.querySelectorAll(".page"));
+  var total = figures.length;
+  var current = 1;
+
+  // Which page is being read = the last one whose top has passed under the
+  // bar. Deliberately scroll-based rather than IntersectionObserver: pages are
+  // lazily loaded, so early on several have no height at all and an observer
+  // reports every one of them as visible at once.
+  var BAR = 60;
+  function recompute() {
+    var found = 1;
+    for (var i = 0; i < figures.length; i++) {
+      if (figures[i].getBoundingClientRect().top <= BAR + 1) { found = i + 1; }
+    }
+    if (found !== current) {
+      current = found;
+      progress.textContent = current + " / " + total;
+    }
+  }
+
+  var ticking = false;
+  function onScroll() {
+    // While a page-turn is animating, the scroll position is mid-flight and
+    // says nothing about where the reader means to be.
+    if (seeking || ticking) { return; }
+    ticking = true;
+    requestAnimationFrame(function () { recompute(); ticking = false; });
+  }
+  window.addEventListener("scroll", onScroll, {passive: true});
+  window.addEventListener("resize", onScroll, {passive: true});
+
+  // Turning three pages quickly must land three pages on, so the target moves
+  // immediately and the smooth scroll simply follows it.
+  var seeking = false;
+  var settle = null;
+  function go(delta) {
+    var target = Math.min(Math.max(current + delta, 1), total);
+    if (target === current) { return; }
+    current = target;
+    progress.textContent = current + " / " + total;
+    seeking = true;
+    clearTimeout(settle);
+    settle = setTimeout(function () { seeking = false; recompute(); }, 450);
+    figures[target - 1].scrollIntoView({behavior: "smooth", block: "start"});
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.target.tagName === "INPUT" || event.metaKey || event.ctrlKey) { return; }
+    if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+      event.preventDefault(); go(1);
+    } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+      event.preventDefault(); go(-1);
+    } else if (event.key === "Home") {
+      event.preventDefault(); current = 2; go(-1);
+    } else if (event.key === "End") {
+      event.preventDefault(); current = total - 1; go(1);
+    }
+  });
+
+  // Tap the outer thirds to turn; the middle toggles the chrome, so the whole
+  // screen can be score while you are actually playing.
+  pagesEl.addEventListener("click", function (event) {
+    var x = event.clientX / window.innerWidth;
+    if (x < 0.28) { go(-1); }
+    else if (x > 0.72) { go(1); }
+    else { bar.classList.toggle("hidden"); }
+  });
+
+  recompute();
+}());
+</script>
+{% endblock %}

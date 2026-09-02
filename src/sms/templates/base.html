@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}Sheet Music Shelf{% endblock %}</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2c4a8c">
+<link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+
+{% block chrome %}
+{% set params = params | default({}) %}
+<header class="topbar">
+  <a class="brand" href="/">Sheet&nbsp;Music&nbsp;Shelf</a>
+  <form class="search" method="get" action="/">
+    <input type="search" name="q" value="{{ params.q or '' }}"
+           placeholder="Composer, title, K. 331&hellip;" aria-label="Search the catalogue">
+    {% for key, value in params.items() if key != 'q' %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+  </form>
+  <div class="who">
+    <span class="muted">{{ viewer.display_name }}</span>
+    <a href="/auth/logout">Sign out</a>
+  </div>
+</header>
+{% endblock %}
+
+<main>{% block content %}{% endblock %}</main>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(function () { /* not fatal */ });
+  }
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

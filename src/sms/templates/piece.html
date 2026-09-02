@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ piece.title or "Untitled" }} &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<article class="piece-detail">
+
+  <a class="cover" href="/read/{{ piece.id }}">
+    <img src="/api/v1/pieces/{{ piece.id }}/thumb" alt="First page of {{ piece.title or 'this piece' }}"
+         width="320" height="420">
+  </a>
+
+  <div class="body">
+    <h1>{{ piece.title or "Untitled" }}</h1>
+    <p class="byline">{{ piece.composer_name or "Unknown composer" }}</p>
+
+    <p class="actions">
+      <a class="button" href="/read/{{ piece.id }}">Read</a>
+      <a class="button ghost" href="/api/v1/pieces/{{ piece.id }}/pdf">Open the PDF</a>
+    </p>
+
+    <dl class="facts">
+      {% if piece.catalog_display %}<dt>Catalogue</dt><dd>{{ piece.catalog_display }}</dd>{% endif %}
+      {% if piece.music_key %}<dt>Key</dt><dd>{{ piece.music_key }}</dd>{% endif %}
+      {% if piece.form %}<dt>Form</dt><dd>{{ piece.form }}</dd>{% endif %}
+      <dt>Pages</dt>
+      <dd>
+        {{ piece.page_count }}
+        {% if piece.page_count != file.page_count %}
+          <span class="muted">&mdash; pages {{ piece.page_start }}&ndash;{{ piece.page_end }} of a {{ file.page_count }}-page file</span>
+        {% endif %}
+      </dd>
+      {% if piece.printed_first_page %}
+        <dt>Printed pagination</dt>
+        <dd>{{ piece.printed_first_page }}{% if piece.printed_last_page %}&ndash;{{ piece.printed_last_page }}{% endif %}
+          <span class="muted">in the original volume</span></dd>
+      {% endif %}
+      <dt>Collection</dt><dd>{{ collection.name }}</dd>
+      <dt>File</dt><dd><code>{{ file.rel_path }}</code></dd>
+    </dl>
+
+    <div class="confidence {{ piece.route }}">
+      <p>
+        <strong>{{ "%.2f"|format(piece.confidence) }}</strong>
+        {% if piece.route == 'accept' %}confident &mdash; catalogued automatically
+        {% elif piece.route == 'review' %}needs a look
+        {% else %}held back{% endif %}
+      </p>
+      {% if piece.notes_machine %}
+        <ul>{% for note in piece.notes_machine %}<li>{{ note }}</li>{% endfor %}</ul>
+      {% endif %}
+    </div>
+
+    {% if siblings %}
+      <section class="related">
+        <h2>Also in this file</h2>
+        <ul class="linklist">
+          {% for other in siblings %}
+            <li><a href="/piece/{{ other.id }}">{{ other.title or "Untitled" }}</a>
+                <span class="muted">pp {{ other.page_start }}&ndash;{{ other.page_end }}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if editions %}
+      <section class="related">
+        <h2>Other copies of this work</h2>
+        <ul class="linklist">
+          {% for other in editions %}
+            <li><a href="/piece/{{ other.id }}">{{ other.title or "Untitled" }}</a>
+                <span class="muted">{{ other.source_file.collection.name }}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+
+</article>
+{% endblock %}

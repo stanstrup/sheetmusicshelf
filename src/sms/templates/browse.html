@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Browse &middot; Sheet Music Shelf{% endblock %}
+
+{% macro facet(name, label, values) %}
+  {% if values %}
+  <details class="facet" {% if params.get(name) %}open{% endif %}>
+    <summary>{{ label }}{% if params.get(name) %} <span class="dot"></span>{% endif %}</summary>
+    <ul>
+      {% for value, count in values %}
+        <li>
+          {% if params.get(name) == value %}
+            <a class="on" href="{{ url_without(name) }}">{{ value }}<span class="count">{{ count }}</span></a>
+          {% else %}
+            <a href="{{ url_with(name, value) }}">{{ value }}<span class="count">{{ count }}</span></a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="layout">
+
+  <aside class="filters">
+    <div class="filters-head">
+      <h2>Filter</h2>
+      {% if params %}<a class="clear" href="/">Clear all</a>{% endif %}
+    </div>
+
+    {% if params %}
+      <ul class="chips">
+        {% for key, value in params.items() %}
+          <li><a href="{{ url_without(key) }}">{{ key }}: {{ value }} <span aria-hidden="true">&times;</span></a></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {{ facet('composer', 'Composer', facets.composer) }}
+    {{ facet('form', 'Form', facets.form) }}
+    {{ facet('key', 'Key', facets.key) }}
+
+    {% if facets.collections %}
+    <details class="facet">
+      <summary>Collection</summary>
+      <ul>
+        {% for cid, cname in facets.collections %}
+          <li><a class="{{ 'on' if params.get('collection') == cid|string }}"
+                 href="{{ url_without('collection') if params.get('collection') == cid|string else url_with('collection', cid) }}">{{ cname }}</a></li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+
+    <details class="facet">
+      <summary>Cataloguing</summary>
+      <ul>
+        {% for value, label in [('review', 'Needs review'), ('hold', 'Held — signals disagree')] %}
+          <li><a class="{{ 'on' if params.get('route') == value }}"
+                 href="{{ url_without('route') if params.get('route') == value else url_with('route', value) }}">{{ label }}</a></li>
+        {% endfor %}
+      </ul>
+    </details>
+  </aside>
+
+  <section class="results" id="results">
+    <div class="results-head">
+      <p class="count-line">
+        <strong>{{ "{:,}".format(total) }}</strong> {{ "piece" if total == 1 else "pieces" }}
+        {% if params %}<span class="muted">matching</span>{% endif %}
+      </p>
+      <nav class="sorts">
+        {% for value, label in [('composer','Composer'), ('title','Title'), ('uncertain','Least certain'), ('recent','Recently added')] %}
+          <a class="{{ 'on' if sort == value }}" href="{{ url_with('sort', value) }}">{{ label }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+
+    {% if not pieces %}
+      <div class="empty">
+        <p>Nothing here yet.</p>
+        <p class="muted">
+          {% if params %}No piece matches those filters.
+          {% else %}Register a collection and scan it: <code>sms collection add &lt;path&gt;</code>, then <code>sms collection scan &lt;id&gt;</code>.
+          {% endif %}
+        </p>
+      </div>
+    {% else %}
+      <ul class="grid">
+        {% for piece in pieces %}
+        <li class="card">
+          <a class="thumb" href="/read/{{ piece.id }}" aria-label="Read {{ piece.title or 'untitled' }}">
+            <img loading="lazy" src="/api/v1/pieces/{{ piece.id }}/thumb" alt="" width="320" height="420">
+          </a>
+          <div class="meta">
+            <a class="title" href="/piece/{{ piece.id }}">{{ piece.title or "Untitled" }}</a>
+            <p class="byline">{{ piece.composer_name or "Unknown composer" }}</p>
+            <p class="detail">
+              {% if piece.catalog_display %}<span>{{ piece.catalog_display }}</span>{% endif %}
+              {% if piece.music_key %}<span>{{ piece.music_key }}</span>{% endif %}
+              <span>{{ piece.page_count }}&thinsp;pp</span>
+            </p>
+            {% if piece.route != 'accept' %}
+              <p class="flag {{ piece.route }}">
+                {{ "needs review" if piece.route == 'review' else "held" }}
+                <span class="muted">{{ "%.2f"|format(piece.confidence) }}</span>
+              </p>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      {% if pages > 1 %}
+      <nav class="pager">
+        {% if page > 1 %}<a href="{{ url_with('page', page - 1) }}">&larr; Previous</a>{% endif %}
+        <span class="muted">Page {{ page }} of {{ pages }}</span>
+        {% if page < pages %}<a href="{{ url_with('page', page + 1) }}">Next &rarr;</a>{% endif %}
+      </nav>
+      {% endif %}
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}
