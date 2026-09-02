@@ -44,15 +44,15 @@ _SEED: dict[tuple[str, str, int | None, int | None], tuple[str, ...]] = {
     ("Robert Schumann", "Schumann, Robert", 1810, 1856):
         ("schumann", "robert schumann"),
     ("Felix Mendelssohn", "Mendelssohn, Felix", 1809, 1847):
-        ("mendelssohn", "felix mendelssohn", "mendelssohn bartholdy"),
+        ("mendelssohn", "felix mendelssohn", "mendelssohn bartholdy", "mendelso"),
     ("Edvard Grieg", "Grieg, Edvard", 1843, 1907):
         ("grieg", "edvard grieg"),
     ("Domenico Scarlatti", "Scarlatti, Domenico", 1685, 1757):
-        ("scarlatti", "domenico scarlatti"),
+        ("scarlatti", "domenico scarlatti", "scarlat"),
     ("Claude Debussy", "Debussy, Claude", 1862, 1918):
         ("debussy", "claude debussy"),
     ("Pyotr Ilyich Tchaikovsky", "Tchaikovsky, Pyotr Ilyich", 1840, 1893):
-        ("tchaikovsky", "tschaikowsky", "chaikovsky", "pi tchaikovsky"),
+        ("tchaikovsky", "tschaikowsky", "chaikovsky", "pi tchaikovsky", "tsch"),
     ("George Frideric Handel", "Handel, George Frideric", 1685, 1759):
         ("handel", "haendel", "g f handel", "george frideric handel"),
     ("Antonin Dvorak", "Dvorak, Antonin", 1841, 1904): ("dvorak", "antonin dvorak"),
@@ -71,6 +71,36 @@ _SEED: dict[tuple[str, str, int | None, int | None], tuple[str, ...]] = {
     ("John Field", "Field, John", 1782, 1837): ("field",),
     ("Louis Moreau Gottschalk", "Gottschalk, Louis Moreau", 1829, 1869): ("gottschalk", "gotts"),
     ("Charles Tomlinson Griffes", "Griffes, Charles Tomlinson", 1884, 1920): ("griffes",),
+    # The Sheet Music Archive files by truncated folder name, so those spellings
+    # are aliases in their own right.
+    ("Sergei Rachmaninoff", "Rachmaninoff, Sergei", 1873, 1943): ("rachmaninoff", "rachmaninov", "rachman"),
+    ("Modest Mussorgsky", "Mussorgsky, Modest", 1839, 1881): ("mussorgsky", "moussorgsky", "mouss"),
+    ("Sergei Prokofiev", "Prokofiev, Sergei", 1891, 1953): ("prokofiev", "prokof"),
+    ("Alexander Scriabin", "Scriabin, Alexander", 1872, 1915): ("scriabin", "skryabin"),
+    ("Igor Stravinsky", "Stravinsky, Igor", 1882, 1971): ("stravinsky", "stravin"),
+    ("Maurice Ravel", "Ravel, Maurice", 1875, 1937): ("ravel",),
+    ("Erik Satie", "Satie, Erik", 1866, 1925): ("satie",),
+    ("Camille Saint-Saens", "Saint-Saens, Camille", 1835, 1921): ("saint saens", "saintsae", "saint-saens"),
+    ("Jean-Philippe Rameau", "Rameau, Jean-Philippe", 1683, 1764): ("rameau",),
+    ("Joachim Raff", "Raff, Joachim", 1822, 1882): ("raff",),
+    ("Anton Rubinstein", "Rubinstein, Anton", 1829, 1894): ("rubinstein", "rubin"),
+    ("Ignacy Jan Paderewski", "Paderewski, Ignacy Jan", 1860, 1941): ("paderewski", "paderews"),
+    ("Amilcare Ponchielli", "Ponchielli, Amilcare", 1834, 1886): ("ponchielli", "ponchiel"),
+    ("Niccolo Paganini", "Paganini, Niccolo", 1782, 1840): ("paganini",),
+    ("Moritz Moszkowski", "Moszkowski, Moritz", 1854, 1925): ("moszkowski", "moszkow"),
+    ("Edward MacDowell", "MacDowell, Edward", 1860, 1908): ("macdowell", "macdow"),
+    ("Anatoly Liadov", "Liadov, Anatoly", 1855, 1914): ("liadov", "lyadov"),
+    ("Adolf von Henselt", "Henselt, Adolf von", 1814, 1889): ("henselt",),
+    ("Scott Joplin", "Joplin, Scott", 1868, 1917): ("joplin",),
+    ("Rodolphe Kreutzer", "Kreutzer, Rodolphe", 1766, 1831): ("kreutzer",),
+    ("Pierre Rode", "Rode, Pierre", 1774, 1830): ("rode",),
+    ("Christian Sinding", "Sinding, Christian", 1856, 1941): ("sinding",),
+    ("Giuseppe Verdi", "Verdi, Giuseppe", 1813, 1901): ("verdi",),
+    ("Richard Wagner", "Wagner, Richard", 1813, 1883): ("wagner",),
+    ("Carl Maria von Weber", "Weber, Carl Maria von", 1786, 1826): ("weber", "von weber"),
+    # Folk and anonymous material is attributed honestly rather than
+    # left blank, which would hide it from every composer filter.
+    ("Traditional", "Traditional", None, None): ("trad", "traditional", "anon", "anonymous"),
 }
 
 _ALIASES: dict[str, Composer] = {}

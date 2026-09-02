@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Review &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<div class="review">
+
+  <header class="review-head">
+    <div>
+      <h1>Review</h1>
+      <p class="muted">
+        {{ outstanding }} left{% if collection %} in {{ collection.name }}{% endif %}.
+        Confirm what is right, fix what is not.
+      </p>
+    </div>
+    <nav class="review-filters">
+      {% for value, label in [('', 'All'), ('review', 'Needs review'), ('hold', 'Held')] %}
+        <a class="{{ 'on' if route == value }}"
+           href="/review?{% if collection %}collection={{ collection.id }}&{% endif %}route={{ value }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </header>
+
+  {% if not item %}
+    <div class="empty">
+      <p><strong>Nothing left to review.</strong></p>
+      <p class="muted">Everything in this filter has been confirmed or set aside.</p>
+      <p><a class="button ghost" href="/">Back to browse</a></p>
+    </div>
+  {% else %}
+
+  <div class="review-body">
+
+    <figure class="review-page">
+      <img src="/api/v1/pieces/{{ item.id }}/pages/1?width=800"
+           alt="First page of the piece under review">
+      <figcaption>
+        <a href="/read/{{ item.id }}">Open the reader &rarr;</a>
+        <span class="muted">{{ item.page_count }} pp
+          {%- if item.page_count != file.page_count %} of {{ file.page_count }} in the file{% endif %}</span>
+      </figcaption>
+    </figure>
+
+    <form class="review-form" method="post" action="/review/{{ item.id }}">
+      <input type="hidden" name="next_route" value="{{ route }}">
+      {% if collection %}<input type="hidden" name="collection" value="{{ collection.id }}">{% endif %}
+
+      <p class="path"><code>{{ file.rel_path }}</code></p>
+      <p class="score {{ item.route }}">
+        <strong>{{ "%.2f"|format(item.confidence) }}</strong>
+        {{ "held — signals disagree" if item.route == 'hold' else "needs review" }}
+      </p>
+      {% if item.notes_machine %}
+        <ul class="machine-notes">{% for note in item.notes_machine %}<li>{{ note }}</li>{% endfor %}</ul>
+      {% endif %}
+
+      {% for field in fields %}
+        <div class="field">
+          <label for="f_{{ field.name }}">{{ field.label }}</label>
+          <input id="f_{{ field.name }}" name="{{ field.name }}" value="{{ field.value or '' }}"
+                 autocomplete="off" {% if loop.first %}autofocus{% endif %}>
+          {% if field.candidates %}
+            <ul class="candidates">
+              {% for candidate in field.candidates %}
+                <li>
+                  <button type="button" class="pick" data-target="f_{{ field.name }}"
+                          data-value="{{ candidate.value }}">{{ candidate.value }}</button>
+                  <span class="src">{{ candidate.source }} &middot; {{ "%.2f"|format(candidate.weight) }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="review-actions">
+        <button class="button" name="action" value="accept">Accept</button>
+        <button class="button ghost" name="action" value="skip">Skip</button>
+        <button class="button danger" name="action" value="reject">Not music</button>
+      </div>
+      <p class="hint muted">
+        Accepting records your values as decisions &mdash; no later signal can
+        overwrite them, and a re-scan will not disturb them.
+      </p>
+    </form>
+
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // Clicking a proposed value fills the field rather than submitting, so the
+  // reviewer can correct it before committing.
+  document.querySelectorAll(".pick").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var input = document.getElementById(button.dataset.target);
+      if (input) { input.value = button.dataset.value; input.focus(); }
+    });
+  });
+}());
+</script>
+{% endblock %}

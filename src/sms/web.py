@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import distinct, func, or_, select
@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import get_session
-from .models import Collection, Composer, Piece, SourceFile
+from .models import Collection, Composer, FieldCandidate, Piece, SourceFile
 
 log = logging.getLogger("sms.web")
 
@@ -310,6 +310,141 @@ def read(
             "spread": bool(spread),
         },
     )
+
+
+# --- review queue ---------------------------------------------------------
+
+#: The fields a reviewer is asked to confirm, in the order they matter.
+REVIEW_FIELDS = (
+    ("composer", "Composer"),
+    ("title", "Title"),
+    ("catalog", "Catalogue number"),
+    ("key", "Key"),
+    ("form", "Form"),
+    ("instrumentation", "Scored for"),
+)
+
+
+def _next_for_review(session: Session, collection_id: int | None, route: str | None) -> Piece | None:
+    """Least confident first: the worst guesses are worth a human eye soonest."""
+    query = (
+        select(Piece)
+        .join(SourceFile, Piece.source_file_id == SourceFile.id)
+        .where(Piece.review_state == "pending")
+    )
+    query = query.where(Piece.route == route) if route else query.where(Piece.route.in_(["review", "hold"]))
+    if collection_id is not None:
+        query = query.where(SourceFile.collection_id == collection_id)
+    return session.scalar(query.order_by(Piece.confidence.asc(), Piece.id.asc()).limit(1))
+
+
+@router.get("/review", response_class=HTMLResponse)
+def review(
+    request: Request,
+    session: Session = Depends(get_session),
+    collection: int | None = None,
+    route: str = "",
+) -> Response:
+    viewer = _viewer(request, session)
+    item = _next_for_review(session, collection, route or None)
+
+    outstanding_query = (
+        select(func.count())
+        .select_from(Piece)
+        .join(SourceFile, Piece.source_file_id == SourceFile.id)
+        .where(Piece.review_state == "pending", Piece.route.in_(["review", "hold"]))
+    )
+    if collection is not None:
+        outstanding_query = outstanding_query.where(SourceFile.collection_id == collection)
+    outstanding = session.scalar(outstanding_query) or 0
+
+    fields: list[dict] = []
+    file_row = None
+    if item is not None:
+        file_row = item.source_file
+        candidates = list(
+            session.scalars(
+                select(FieldCandidate)
+                .where(FieldCandidate.piece_id == item.id)
+                .order_by(FieldCandidate.weight.desc())
+            )
+        )
+        current = {
+            "composer": item.composer_name, "title": item.title,
+            "catalog": item.catalog_display, "key": item.music_key,
+            "form": item.form, "instrumentation": None,
+        }
+        for name, label in REVIEW_FIELDS:
+            options = [c for c in candidates if c.field == name]
+            value = current.get(name)
+            if value is None and options:
+                value = options[0].value
+            # Only offer alternatives; repeating the filled-in value as a
+            # button to click is noise.
+            alternatives = [c for c in options if c.value != value]
+            fields.append({"name": name, "label": label, "value": value, "candidates": alternatives})
+
+    return templates.TemplateResponse(
+        request, "review.html",
+        {
+            "viewer": viewer, "item": item, "file": file_row, "fields": fields,
+            "outstanding": outstanding, "route": route,
+            "collection": session.get(Collection, collection) if collection else None,
+        },
+    )
+
+
+@router.post("/review/{piece_id}")
+async def review_submit(
+    piece_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Record a decision and move to the next piece."""
+    from .ingest.persist import accept_value, recompute
+
+    viewer = _viewer(request, session)
+    piece = session.get(Piece, piece_id)
+    if piece is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
+
+    form = await request.form()
+    action = form.get("action", "skip")
+    route = form.get("next_route", "") or ""
+    collection = form.get("collection")
+
+    if action == "reject":
+        piece.review_state = "rejected"
+    elif action == "accept":
+        for name, _label in REVIEW_FIELDS:
+            value = (form.get(name) or "").strip()
+            if value:
+                accept_value(
+                    session, piece, name, value,
+                    user_id=viewer.user_id, source=f"human:{viewer.display_name}",
+                )
+        source_collection = piece.source_file.collection
+        recompute(
+            session, piece,
+            auto_accept=source_collection.auto_accept,
+            review_floor=source_collection.review_floor,
+        )
+        piece.review_state = "accepted"
+    else:
+        # Skipped: leave it pending but push it behind the rest for now.
+        piece.confidence = min(piece.confidence + 0.0001, 0.9999)
+
+    if action in ("accept", "reject"):
+        from datetime import datetime, timezone
+
+        piece.reviewed_by = viewer.user_id
+        piece.reviewed_at = datetime.now(timezone.utc)
+
+    target = f"/review?route={route}"
+    if collection:
+        target += f"&collection={collection}"
+    return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
+
 
 
 # --- PWA ------------------------------------------------------------------
