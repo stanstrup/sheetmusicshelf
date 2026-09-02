@@ -192,6 +192,7 @@ class Piece(Base):
         CheckConstraint("page_end >= page_start", name="ck_piece_pages"),
         CheckConstraint("page_start >= 1", name="ck_piece_page_start"),
         Index("ix_piece_route", "route", "confidence"),
+        Index("ix_piece_catalog_sort", "composer_name", "catalog_system", "catalog_number", "catalog_sub"),
         Index("ix_piece_file_pages", "source_file_id", "page_start"),
     )
 
@@ -212,6 +213,12 @@ class Piece(Base):
     title: Mapped[str | None] = mapped_column(Text, index=True)
     composer_name: Mapped[str | None] = mapped_column(String(200), index=True)
     catalog_display: Mapped[str | None] = mapped_column(String(64))
+    # Split as well as displayed, so "Op. 10 no. 9" sorts before "Op. 10 no. 10"
+    # instead of lexically between "no. 1" and "no. 11".
+    catalog_system: Mapped[str | None] = mapped_column(String(12), index=True)
+    catalog_number: Mapped[int | None] = mapped_column(Integer)
+    catalog_suffix: Mapped[str | None] = mapped_column(String(8))
+    catalog_sub: Mapped[int | None] = mapped_column(Integer)
     music_key: Mapped[str | None] = mapped_column(String(32), index=True)
     form: Mapped[str | None] = mapped_column(String(80), index=True)
     arranger: Mapped[str | None] = mapped_column(String(200))

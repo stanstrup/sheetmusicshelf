@@ -119,7 +119,13 @@ def _filtered(session: Session, params: dict):
     query = query.where(Piece.review_state != "rejected")
 
     orderings = {
-        "composer": (Piece.composer_name.asc(), Piece.catalog_display.asc(), Piece.title.asc()),
+        "composer": (
+            Piece.composer_name.asc(),
+            Piece.catalog_system.asc().nulls_last(),
+            Piece.catalog_number.asc().nulls_last(),
+            Piece.catalog_sub.asc().nulls_last(),
+            Piece.title.asc(),
+        ),
         "title": (Piece.title.asc(),),
         "uncertain": (Piece.confidence.asc(),),
         "recent": (Piece.created_at.desc(),),

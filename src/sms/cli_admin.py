@@ -212,6 +212,40 @@ def collection_materialise(
         console.print("[dim]nothing was written; re-run with --apply to copy[/dim]")
 
 
+@collection_app.command("recompute")
+def collection_recompute(
+    collection_id: int = typer.Option(None, "--collection", "-c", help="Limit to one collection."),
+) -> None:
+    """Re-resolve every piece from the candidates already stored.
+
+    No files are read: this replays the scorer over the existing evidence, so
+    it is how you apply a changed threshold or a new derived field without a
+    re-scan over the NAS.
+    """
+    from .ingest.persist import recompute
+    from .models import SourceFile as _SourceFile
+
+    with session_scope() as session:
+        query = select(Piece).join(_SourceFile, Piece.source_file_id == _SourceFile.id)
+        if collection_id is not None:
+            query = query.where(_SourceFile.collection_id == collection_id)
+
+        done = 0
+        with console.status("recomputing...") as status:
+            for piece in session.scalars(query):
+                collection = piece.source_file.collection
+                recompute(
+                    session, piece,
+                    auto_accept=collection.auto_accept,
+                    review_floor=collection.review_floor,
+                )
+                done += 1
+                if done % 250 == 0:
+                    session.commit()
+                    status.update(f"recomputing... {done}")
+    console.print(f"[green]{done} pieces[/green] recomputed")
+
+
 # --- composers ------------------------------------------------------------
 
 @composer_app.command("sync")

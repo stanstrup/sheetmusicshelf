@@ -71,7 +71,13 @@ def list_pieces(
         query = query.where(Piece.difficulty <= max_difficulty)
 
     orderings = {
-        "composer": (Piece.composer_name.asc(), Piece.catalog_display.asc(), Piece.title.asc()),
+        "composer": (
+            Piece.composer_name.asc(),
+            Piece.catalog_system.asc().nulls_last(),
+            Piece.catalog_number.asc().nulls_last(),
+            Piece.catalog_sub.asc().nulls_last(),
+            Piece.title.asc(),
+        ),
         "title": (Piece.title.asc(),),
         "confidence": (Piece.confidence.asc(),),
         "recent": (Piece.created_at.desc(),),

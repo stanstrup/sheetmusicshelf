@@ -190,7 +190,25 @@ def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floo
     for field, column in DENORMALISED.items():
         if field in resolved_values:
             setattr(piece, column, resolved_values[field] or None)
+
+    _split_catalog(piece)
     return piece
+
+
+def _split_catalog(piece: Piece) -> None:
+    """Break the catalogue string into sortable parts.
+
+    Stored alongside the display form rather than instead of it: the display
+    string is what a publisher wrote, the parts are what a database can order.
+    Without them "Op. 10 no. 9" sorts between "no. 1" and "no. 11".
+    """
+    from ..music.catalogs import parse_catalog
+
+    catalog = parse_catalog(piece.catalog_display or "")
+    piece.catalog_system = catalog.system if catalog else None
+    piece.catalog_number = catalog.number if catalog else None
+    piece.catalog_suffix = (catalog.suffix or None) if catalog else None
+    piece.catalog_sub = catalog.sub if catalog else None
 
 
 def commit_proposal(
