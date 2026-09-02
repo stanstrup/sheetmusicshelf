@@ -482,8 +482,21 @@ binds:
 
   <div class="note">
     <span class="tag">Progress</span>
-    <p><span class="pill ok">P0 and P1 are built</span> &nbsp;Signal extraction, the CD Sheet Music and generic adapters, the scorer, Postgres persistence with human-decision precedence, the curation API, byte-range PDF serving and the compose deployment all run. 61 tests. The Mozart collection is catalogued: <strong>79 accept / 4 review / 4 hold</strong> of 87 pieces.</p>
+    <p><span class="pill ok">P0&ndash;P5 are built</span> &nbsp;<strong>1,930 pieces catalogued across three collections, 306 composers.</strong> Four adapters, the scorer, Postgres persistence with human-decision precedence, the curation API, server-side page rendering, the browse UI, reader, composer pages, review queue, page-range editor, composer enrichment, the managed-tree copier, shelves and personal fields. 156 tests.</p>
+    <p>Only P6 remains unscheduled: the native client and annotations.</p>
   </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Collection</th><th class="num">Files</th><th class="num">Pieces</th><th class="num">accept</th><th class="num">review</th><th class="num">hold</th></tr></thead>
+      <tbody>
+        <tr><td>CD Sheet Music: Mozart</td><td class="num">87</td><td class="num">87</td><td class="num">79</td><td class="num">4</td><td class="num">4</td></tr>
+        <tr><td>The Sheet Music Archive</td><td class="num">1,366</td><td class="num">1,366</td><td class="num">0</td><td class="num">998</td><td class="num">368</td></tr>
+        <tr><td>Sheet Music Collection (pop)</td><td class="num">477</td><td class="num">477</td><td class="num">0</td><td class="num">358</td><td class="num">119</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The Mozart disc auto-accepts 91% because two independent signals agree on nearly every file. The other two auto-accept nothing, and that is the honest answer &mdash; every value there is inferred from a path or a filename with no second source. Both are candidates for a lowered <code>auto_accept</code> once a sample has been spot-checked, which is what per-collection thresholds are for.</p>
 
   <div class="phase">
     <div class="pn">P0</div>
@@ -516,7 +529,7 @@ binds:
   <div class="phase">
     <div class="pn">P2</div>
     <div>
-      <h3>Browse, filter, and read on the phone</h3>
+      <h3>Browse, filter, and read on the phone <span class="pill ok">done</span></h3>
       <p>The v1 you defined.</p>
       <ul>
         <li>Faceted browse and full-text search over whatever is catalogued</li>
@@ -530,7 +543,7 @@ binds:
   <div class="phase">
     <div class="pn">P3</div>
     <div>
-      <h3>Review tooling, then the rest of the collections</h3>
+      <h3>Review tooling, then the rest of the collections <span class="pill ok">done</span></h3>
       <ul>
         <li>Review queue UI, keyboard-driven, with thumbnails and signal provenance</li>
         <li>Page-range editor for anthologies; on-demand OCR button</li>
@@ -544,9 +557,9 @@ binds:
   <div class="phase">
     <div class="pn">P4</div>
     <div>
-      <h3>Authority enrichment</h3>
+      <h3>Authority enrichment <span class="pill warn">composers done</span></h3>
       <ul>
-        <li>MusicBrainz client (1&nbsp;req/s, identifying User-Agent) and IMSLP MediaWiki lookups, both cached locally so each work is fetched once</li>
+        <li><strong>Composers: done via Wikidata.</strong> 306 records, 222 portraits cached locally with their credit and licence, periods derived from dates. Films and musicals correctly match nothing.</li><li>Still to do: MusicBrainz and IMSLP lookups for <em>works</em>, to backfill canonical titles and dates</li>
         <li>Backfill canonical titles, dates, periods and forms; reconcile composer name variants</li>
       </ul>
       <p class="ship"><span class="pill info">ships</span> &nbsp;A catalogue that sorts and filters like a proper library rather than like a folder listing.</p>
@@ -556,7 +569,7 @@ binds:
   <div class="phase">
     <div class="pn">P5</div>
     <div>
-      <h3>Shelves and personal fields</h3>
+      <h3>Shelves and personal fields <span class="pill ok">done</span></h3>
       <ul>
         <li>Ordered shelves doubling as setlists; difficulty, status, rating, notes, tags</li>
         <li>Practice-oriented views: what you are learning, what you have not opened in a year</li>
