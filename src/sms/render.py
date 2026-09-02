@@ -18,11 +18,19 @@ rasterised once and the NUC never repeats the work.
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 from .config import get_settings
 
 log = logging.getLogger("sms.render")
+
+# PDFium keeps process-global state and is **not thread-safe**.  FastAPI runs
+# sync endpoints in a threadpool, so a browse page requesting sixty thumbnails
+# at once renders them concurrently -- which corrupted the library so thoroughly
+# that every later load failed with "Data format error" until the process was
+# restarted.  One lock, one renderer at a time.
+_PDFIUM_LOCK = threading.Lock()
 
 #: Widths the reader is allowed to ask for.  A closed set, because each one is
 #: a separate cached rasterisation and an open parameter would let a client
@@ -69,33 +77,40 @@ def render_page(pdf_path: Path, page: int, *, width: int, key: str) -> Path:
         raise RenderUnavailable("pypdfium2 is not installed") from exc
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    document = None
-    try:
-        document = pdfium.PdfDocument(str(pdf_path))
-        if not 1 <= page <= len(document):
-            raise RenderUnavailable(f"page {page} outside 1..{len(document)}")
+    with _PDFIUM_LOCK:
+        # Another thread may have rendered this page while we waited.
+        if target.exists() and target.stat().st_size > 0:
+            return target
+        try:
+            document = pdfium.PdfDocument(str(pdf_path))
+            if not 1 <= page <= len(document):
+                raise RenderUnavailable(f"page {page} outside 1..{len(document)}")
 
-        pdf_page = document[page - 1]
-        # pdfium renders at 72 dpi * scale; derive scale from the target width
-        # so a page is legible regardless of its physical size.
-        page_width = pdf_page.get_width() or 612
-        scale = max(width / page_width, 0.1)
-        bitmap = pdf_page.render(scale=min(scale, 6.0))
-        image = bitmap.to_pil()
-        if image.mode not in ("RGB", "L"):
-            image = image.convert("RGB")
-        # Scores are line art: quality 82 is indistinguishable here and roughly
-        # a third the size of the lossless encode.
-        image.save(target, format="WEBP", quality=82, method=4)
-    except RenderUnavailable:
-        raise
-    except Exception as exc:                       # noqa: BLE001 - surfaced as 500 by the caller
-        log.warning("render failed for %s page %s: %s", pdf_path.name, page, exc)
-        target.unlink(missing_ok=True)
-        raise RenderUnavailable(str(exc)) from exc
-    finally:
-        if document is not None:
-            document.close()
+            pdf_page = document[page - 1]
+            # pdfium renders at 72 dpi * scale; derive scale from the target
+            # width so a page is legible regardless of its physical size.
+            page_width = pdf_page.get_width() or 612
+            scale = max(width / page_width, 0.1)
+            bitmap = pdf_page.render(scale=min(scale, 6.0))
+            # to_pil() shares pdfium's buffer; copy before the bitmap is
+            # collected, or the encoder reads freed memory.
+            image = bitmap.to_pil().copy()
+            if image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
+            # Scores are line art: quality 82 is indistinguishable here and
+            # roughly a third the size of the lossless encode.
+            image.save(target, format="WEBP", quality=82, method=4)
+        except RenderUnavailable:
+            raise
+        except Exception as exc:                   # noqa: BLE001 - surfaced by the caller
+            log.warning("render failed for %s page %s: %s", pdf_path.name, page, exc)
+            target.unlink(missing_ok=True)
+            raise RenderUnavailable(str(exc)) from exc
+        finally:
+            # Deliberately *not* document.close(): pypdfium2 reference-counts
+            # the library's lifetime, and closing by hand while a page or
+            # bitmap is still alive is what tears the global state down.
+            document = None
 
     return target
 
