@@ -11,7 +11,11 @@
 
   <div class="body">
     <h1>{{ piece.title or "Untitled" }}</h1>
-    <p class="byline">{{ piece.composer_name or "Unknown composer" }}</p>
+    <p class="byline">
+      {% if composer %}<a href="/composer/{{ composer.id }}">{{ composer.canonical_name }}</a>{% if composer.lifespan %}
+        <span class="muted">{{ composer.lifespan }}</span>{% endif %}
+      {% else %}{{ piece.composer_name or "Unknown composer" }}{% endif %}
+    </p>
 
     <p class="actions">
       <a class="button" href="/read/{{ piece.id }}">Read</a>

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import get_session
-from .models import Collection, Piece, SourceFile
+from .models import Collection, Composer, Piece, SourceFile
 
 log = logging.getLogger("sms.web")
 
@@ -108,6 +108,12 @@ def _filtered(session: Session, params: dict):
             query = query.where(column == value)
     if params.get("collection"):
         query = query.where(SourceFile.collection_id == int(params["collection"]))
+    if params.get("period"):
+        # Period lives on the composer authority record, not on the piece, so
+        # filtering by it means going through the composer.
+        query = query.join(
+            Composer, Composer.canonical_name == Piece.composer_name
+        ).where(Composer.period == params["period"])
 
     # Rejected entries are not part of the catalogue.
     query = query.where(Piece.review_state != "rejected")
@@ -132,14 +138,28 @@ def _facets(session: Session) -> dict:
         ).all()
         return [(value, count) for value, count in rows if value]
 
+    periods = session.execute(
+        select(Composer.period, func.count())
+        .where(Composer.period.isnot(None))
+        .group_by(Composer.period)
+        .order_by(func.count().desc())
+    ).all()
+
     return {
         "composer": values(Piece.composer_name),
         "form": values(Piece.form),
         "key": values(Piece.music_key),
+        "period": [(name, count) for name, count in periods if name],
         "collections": session.execute(
             select(Collection.id, Collection.name).order_by(Collection.name)
         ).all(),
     }
+
+
+def composer_ids(session: Session) -> dict[str, int]:
+    """Name -> composer id, so a byline can link to its authority record."""
+    rows = session.execute(select(Composer.canonical_name, Composer.id)).all()
+    return {name: cid for name, cid in rows}
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -153,13 +173,15 @@ def home(
     status_: str | None = Query(None, alias="status"),
     route: str | None = None,
     collection: str | None = None,
+    period: str | None = None,
     sort: str = "composer",
     page: int = 1,
 ) -> Response:
     viewer = _viewer(request, session)
     params = {
         "q": q, "composer": composer, "form": form, "key": key,
-        "status": status_, "route": route, "collection": collection, "sort": sort,
+        "status": status_, "route": route, "collection": collection,
+        "period": period, "sort": sort,
     }
     query = _filtered(session, params)
     total = session.scalar(select(func.count()).select_from(query.subquery())) or 0
@@ -179,6 +201,7 @@ def home(
         "pages": max((total + PAGE_SIZE - 1) // PAGE_SIZE, 1),
         "params": active,
         "facets": _facets(session),
+        "composer_ids": composer_ids(session),
         "sort": sort,
         **_register_helpers(request, link_params),
     }
@@ -220,14 +243,46 @@ def piece_detail(
                 .limit(20)
             )
         )
+    composer = None
+    if piece.composer_name:
+        composer = session.scalar(
+            select(Composer).where(Composer.canonical_name == piece.composer_name)
+        )
     return templates.TemplateResponse(
         request,
         "piece.html",
         {
-            "viewer": viewer, "piece": piece,
+            "viewer": viewer, "piece": piece, "composer": composer,
             "file": piece.source_file, "collection": piece.source_file.collection,
             "siblings": siblings, "editions": editions,
         },
+    )
+
+
+@router.get("/composer/{composer_id}", response_class=HTMLResponse)
+def composer_detail(
+    composer_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Response:
+    viewer = _viewer(request, session)
+    composer = session.get(Composer, composer_id)
+    if composer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such composer")
+
+    base = select(Piece).where(
+        Piece.composer_name == composer.canonical_name,
+        Piece.review_state != "rejected",
+    )
+    total = session.scalar(select(func.count()).select_from(base.subquery())) or 0
+    pieces = list(
+        session.scalars(
+            base.order_by(Piece.catalog_display.asc(), Piece.title.asc()).limit(24)
+        )
+    )
+    return templates.TemplateResponse(
+        request, "composer.html",
+        {"viewer": viewer, "composer": composer, "pieces": pieces, "total": total},
     )
 
 

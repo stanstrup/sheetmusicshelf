@@ -51,9 +51,31 @@ class Composer(Base):
     aliases: Mapped[list] = mapped_column(JSONB, default=list)
     musicbrainz_id: Mapped[str | None] = mapped_column(String(64))
     imslp_id: Mapped[str | None] = mapped_column(String(200))
+
+    # --- enrichment, from Wikipedia and Wikidata ---
+    period: Mapped[str | None] = mapped_column(String(24), index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    wikipedia_url: Mapped[str | None] = mapped_column(Text)
+    wikidata_id: Mapped[str | None] = mapped_column(String(24))
+    #: Filename of the cached portrait on the cache volume.  The image is
+    #: copied locally rather than hot-linked, so a phone on a VPN with no route
+    #: to the internet still sees it.
+    portrait_file: Mapped[str | None] = mapped_column(String(120))
+    portrait_source_url: Mapped[str | None] = mapped_column(Text)
+    #: Most Commons portraits are CC-BY-SA. Displaying one without crediting
+    #: the photographer is a licence breach, so the credit is not optional.
+    portrait_credit: Mapped[str | None] = mapped_column(Text)
+    portrait_license: Mapped[str | None] = mapped_column(String(120))
+    enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at = _now()
 
     works: Mapped[list["Work"]] = relationship(back_populates="composer")
+
+    @property
+    def lifespan(self) -> str:
+        from .music.periods import lifespan
+
+        return lifespan(self.born, self.died)
 
 
 class Work(Base):

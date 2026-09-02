@@ -38,6 +38,7 @@
     {% endif %}
 
     {{ facet('composer', 'Composer', facets.composer) }}
+    {{ facet('period', 'Period', facets.period) }}
     {{ facet('form', 'Form', facets.form) }}
     {{ facet('key', 'Key', facets.key) }}
 
@@ -95,7 +96,11 @@
           </a>
           <div class="meta">
             <a class="title" href="/piece/{{ piece.id }}">{{ piece.title or "Untitled" }}</a>
-            <p class="byline">{{ piece.composer_name or "Unknown composer" }}</p>
+            <p class="byline">
+              {% set cid = composer_ids.get(piece.composer_name) %}
+              {% if cid %}<a href="/composer/{{ cid }}">{{ piece.composer_name }}</a>
+              {% else %}{{ piece.composer_name or "Unknown composer" }}{% endif %}
+            </p>
             <p class="detail">
               {% if piece.catalog_display %}<span>{{ piece.catalog_display }}</span>{% endif %}
               {% if piece.music_key %}<span>{{ piece.music_key }}</span>{% endif %}

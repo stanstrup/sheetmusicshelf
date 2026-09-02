@@ -111,6 +111,76 @@ safe to re-run as adapters improve.
 
 ---
 
+## The web UI
+
+Server-rendered Jinja and plain forms. No framework, no bundle, and **nothing
+loaded from a CDN** — a phone reaching this over a VPN may have no route to the
+open internet, so every asset comes from the server.
+
+- **Browse** — faceted by composer, period, form, key, collection and
+  cataloguing state. Cards preview each *piece's* own first page, so a work
+  inside a multi-work PDF shows the right page.
+- **Piece** — metadata, confidence and why, siblings in the same file, other
+  copies of the same work.
+- **Reader** — one image per page rather than a whole PDF, so a six-page piece
+  inside a 378-page volume costs six small requests. Keyboard, tap-zones and a
+  two-up spread; the chrome hides so the whole screen can be score.
+- **Composer** — portrait, dates, derived period, and everything in the library
+  by that composer.
+
+### Why pages are rendered server-side
+
+**87% of this library has no text layer.** The things a browser PDF viewer buys
+you — text selection, in-document search, reflow — do not exist for most of the
+collection anyway. Rendering to WebP instead means no CDN dependency, the same
+code path that will drive the anthology page-range editor, and a scanned page
+arriving as one small image. Renders are cached on the cache volume, keyed by
+file hash, so a page is rasterised once.
+
+## Composer enrichment
+
+```bash
+sms composer sync      # authority records from the names already catalogued
+sms composer enrich    # descriptions, dates, periods and portraits
+```
+
+**Wikidata first, deliberately.** Searching Wikipedia for "Mozart composer"
+ranks the 1979 play *Amadeus* above the man — and an early version of this
+happily stored that play's description and a photograph of an actor. A
+candidate must now *be* a human (P31=Q5) whose occupations (P106) include
+composing, and whose label still resembles the name asked for. A miss returns
+nothing rather than a confident answer about the wrong subject.
+
+Periods are **derived from dates**, not scraped: Wikidata's movement statement
+is patchy and often lists several. A composer is placed by the middle of their
+working life, so Beethoven reads as Classical rather than by his 1770 birth.
+
+Portraits are downloaded and cached locally rather than hot-linked, and the
+photographer credit and licence are stored and displayed with them — most
+Commons portraits are CC-BY-SA and showing one uncredited is a licence breach.
+
+## The managed tree
+
+```bash
+sms collection materialise 1            # show the tree it would build
+sms collection materialise 1 --apply    # copy
+```
+
+Files are **copied, never moved**; the source mount is read-only so a bug here
+cannot reach the originals. Layout:
+
+```
+<managed>/<Composer>/<Title> (<Cat.>)/<edition>.pdf    single-work files
+<managed>/_Books/<Collection>/<original path>          multi-piece books
+```
+
+Books keep their original path because a 378-page volume holding sixty pieces
+cannot sit in one work's folder without lying about what it is. Only pieces
+that have been accepted are filed, so the tree does not fill with folders named
+after guesses that review will change.
+
+---
+
 ## Deployment
 
 `deploy/sheetmusicshelf.yml` targets the existing NUC stack. Three containers:
@@ -146,10 +216,13 @@ Choices made against that host, not against a clean slate:
 ## Status
 
 Built and validated: signal extraction, the CD Sheet Music and generic adapters,
-the scorer, persistence with human-decision precedence, the curation API, byte-range
-PDF serving, and the compose deployment. 61 tests.
+the scorer, persistence with human-decision precedence, the curation API,
+server-side page rendering, byte-range PDF serving, the browse UI, reader,
+composer enrichment, the managed-tree copier, and the compose deployment.
+91 tests.
 
-Next: the browse UI and PWA reader, then the review queue UI and page-range
-editor for anthologies, then adapters for the remaining collections.
+Next: the review-queue UI and the anthology page-range editor, then adapters for
+`The Sheet Music Archive` and `Sheet Music Collection`, then shelves and
+personal fields.
 
 See `docs/plan.html` for the full plan and phasing.

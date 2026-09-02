@@ -1,0 +1,138 @@
+"""Building and enriching the composer authority.
+
+Ingest records a composer *name* on each piece, because a name is all a PDF
+gives you.  This turns those names into authority records, so "Mozart" written
+five different ways across three collections becomes one composer with one set
+of dates, one period and one portrait.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+
+from sqlalchemy import distinct, func, select
+from sqlalchemy.orm import Session
+
+from ..models import Composer, Piece
+from ..music import composers as authority
+from ..music.periods import derive_period
+from . import wikipedia
+
+log = logging.getLogger("sms.enrich")
+
+
+def sync(session: Session) -> tuple[int, int]:
+    """Create composer records for every name the catalogue mentions.
+
+    Returns (created, linked_names).  Names that the seed authority recognises
+    are folded together; anything unrecognised gets its own record rather than
+    being dropped, so nothing disappears from the catalogue.
+    """
+    names = [
+        name for name in session.scalars(
+            select(distinct(Piece.composer_name)).where(Piece.composer_name.isnot(None))
+        ) if name and name.strip()
+    ]
+
+    created = 0
+    for name in names:
+        record = authority.resolve(name)
+        canonical = record.canonical if record else name.strip()
+
+        composer = session.scalar(select(Composer).where(Composer.canonical_name == canonical))
+        if composer is None:
+            composer = Composer(
+                canonical_name=canonical,
+                sort_name=record.sort_name if record else canonical,
+                born=record.born if record else None,
+                died=record.died if record else None,
+                aliases=[],
+            )
+            if composer.born or composer.died:
+                composer.period = derive_period(composer.born, composer.died)
+            session.add(composer)
+            session.flush()
+            created += 1
+
+        # Record the spelling that appeared in the library, so a later lookup
+        # can resolve it without re-deriving.
+        if name != canonical and name not in (composer.aliases or []):
+            composer.aliases = sorted({*(composer.aliases or []), name})
+
+    return created, len(names)
+
+
+def enrich(session: Session, composer: Composer, *, force: bool = False) -> tuple[bool, str]:
+    """Fill in description, dates, period and portrait from Wikipedia.
+
+    Returns (changed, message).  Anything already known and not empty is left
+    alone unless ``force`` -- enrichment is a supplement to what the library
+    itself said, never an override of it.
+    """
+    if composer.enriched_at and not force:
+        return False, "already enriched"
+
+    facts = wikipedia.lookup(composer.canonical_name)
+    if facts is None:
+        composer.enriched_at = datetime.now(timezone.utc)
+        return False, "no Wikipedia article found"
+
+    changed: list[str] = []
+
+    if facts.description and (force or not composer.description):
+        composer.description = facts.description
+        changed.append("description")
+    if facts.wikipedia_url and (force or not composer.wikipedia_url):
+        composer.wikipedia_url = facts.wikipedia_url
+    if facts.wikidata_id:
+        composer.wikidata_id = facts.wikidata_id
+
+    # Dates from the seed authority are hand-checked; only fill gaps.
+    if facts.born and (force or composer.born is None):
+        composer.born = facts.born
+        changed.append("born")
+    if facts.died and (force or composer.died is None):
+        composer.died = facts.died
+        changed.append("died")
+
+    period = derive_period(composer.born, composer.died)
+    if period and period != composer.period:
+        composer.period = period
+        changed.append("period")
+
+    if facts.has_image and (force or not composer.portrait_file):
+        path = wikipedia.save_portrait(composer.id, facts)
+        if path is not None:
+            composer.portrait_file = path.name
+            composer.portrait_source_url = facts.image_source_url
+            composer.portrait_credit = facts.image_credit
+            composer.portrait_license = facts.image_license
+            changed.append("portrait")
+
+    composer.enriched_at = datetime.now(timezone.utc)
+    if not changed:
+        return False, "nothing new" + (f" ({'; '.join(facts.notes)})" if facts.notes else "")
+    return True, ", ".join(changed) + (f" [{'; '.join(facts.notes)}]" if facts.notes else "")
+
+
+def pending(session: Session, limit: int | None = None) -> list[Composer]:
+    query = (
+        select(Composer)
+        .where(Composer.enriched_at.is_(None))
+        .order_by(Composer.canonical_name)
+    )
+    if limit:
+        query = query.limit(limit)
+    return list(session.scalars(query))
+
+
+def counts(session: Session) -> dict[str, int]:
+    total = session.scalar(select(func.count()).select_from(Composer)) or 0
+    enriched = session.scalar(
+        select(func.count()).select_from(Composer).where(Composer.enriched_at.isnot(None))
+    ) or 0
+    with_portrait = session.scalar(
+        select(func.count()).select_from(Composer).where(Composer.portrait_file.isnot(None))
+    ) or 0
+    return {"total": total, "enriched": enriched, "with_portrait": with_portrait}

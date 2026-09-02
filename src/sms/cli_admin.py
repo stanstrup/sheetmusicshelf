@@ -18,13 +18,14 @@ from .db import session_scope
 from .ingest.adapters.base import choose_adapter, get_adapter
 from .ingest.persist import commit_proposal, upsert_collection
 from .ingest.scanner import ScanStats, build_context, iter_proposals
-from .models import Collection, Piece, SourceFile
+from .models import Collection, Composer, Piece, SourceFile
 
 console = Console()
 
 db_app = typer.Typer(help="Database schema management.")
 collection_app = typer.Typer(help="Register and scan collections.")
 token_app = typer.Typer(help="API tokens for agents and devices.")
+composer_app = typer.Typer(help="Composer authority records and enrichment.")
 
 
 # --- database -------------------------------------------------------------
@@ -209,6 +210,90 @@ def collection_materialise(
         console.print(f"  [red]{error}[/red]")
     if not apply:
         console.print("[dim]nothing was written; re-run with --apply to copy[/dim]")
+
+
+# --- composers ------------------------------------------------------------
+
+@composer_app.command("sync")
+def composer_sync() -> None:
+    """Create composer records from the names the catalogue already mentions."""
+    from .enrich.composers import counts, sync
+
+    with session_scope() as session:
+        created, names = sync(session)
+        session.flush()
+        stats = counts(session)
+    console.print(
+        f"[green]{created} new[/green] from {names} distinct names; "
+        f"{stats['total']} composers total, {stats['enriched']} enriched"
+    )
+
+
+@composer_app.command("enrich")
+def composer_enrich(
+    limit: int = typer.Option(None, "--limit", "-n", help="Stop after N composers."),
+    force: bool = typer.Option(False, "--force", help="Re-fetch composers already enriched."),
+    name: str = typer.Option(None, "--name", help="Enrich just this composer."),
+) -> None:
+    """Fetch descriptions, dates, periods and portraits from Wikipedia.
+
+    One composer at a time with a pause between: these are free public APIs
+    and hammering them is both rude and self-defeating.
+    """
+    import time
+
+    from .enrich.composers import counts, enrich, pending
+
+    with session_scope() as session:
+        if name:
+            targets = list(session.scalars(
+                select(Composer).where(Composer.canonical_name.ilike(f"%{name}%"))
+            ))
+            if not targets:
+                raise typer.BadParameter(f"no composer matching {name!r}")
+        elif force:
+            targets = list(session.scalars(select(Composer).order_by(Composer.canonical_name)))
+            if limit:
+                targets = targets[:limit]
+        else:
+            targets = pending(session, limit)
+
+        if not targets:
+            console.print("[dim]nothing to enrich; run `sms composer sync` first[/dim]")
+            return
+
+        for index, composer in enumerate(targets):
+            changed, message = enrich(session, composer, force=force)
+            mark = "[green]+[/green]" if changed else "[dim]-[/dim]"
+            console.print(f"  {mark} {composer.canonical_name}: {message}")
+            session.commit()
+            if index < len(targets) - 1:
+                time.sleep(1.0)
+
+        stats = counts(session)
+    console.print(
+        f"\n[green]{stats['enriched']}/{stats['total']}[/green] enriched, "
+        f"{stats['with_portrait']} with a portrait"
+    )
+
+
+@composer_app.command("list")
+def composer_list() -> None:
+    with session_scope() as session:
+        table = Table(header_style="dim")
+        for column in ("id", "composer", "dates", "period", "portrait", "pieces"):
+            table.add_column(column)
+        rows = session.scalars(select(Composer).order_by(Composer.sort_name))
+        for composer in rows:
+            pieces = session.scalar(
+                select(func.count()).select_from(Piece)
+                .where(Piece.composer_name == composer.canonical_name)
+            ) or 0
+            table.add_row(
+                str(composer.id), composer.canonical_name, composer.lifespan or "-",
+                composer.period or "-", "yes" if composer.portrait_file else "-", str(pieces),
+            )
+        console.print(table)
 
 
 # --- tokens ---------------------------------------------------------------

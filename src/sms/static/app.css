@@ -329,3 +329,35 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* --- composer ----------------------------------------------------------- */
+
+.composer { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+.composer-head {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  padding-bottom: 26px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--rule);
+}
+@media (max-width: 640px) { .composer-head { grid-template-columns: 1fr; gap: 18px; } }
+
+.portrait { margin: 0; }
+.portrait img {
+  width: 100%; height: auto; display: block; border-radius: 3px;
+  border: 1px solid var(--rule-soft); box-shadow: var(--shadow); background: var(--surface);
+}
+.portrait figcaption { margin-top: 6px; font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
+
+.composer-meta h1 { font-family: var(--serif); font-size: 34px; line-height: 1.1; margin: 0; text-wrap: balance; }
+.dates { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 8px 0 0; font-size: 14px; color: var(--ink-soft); }
+.period {
+  display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 20px;
+  background: var(--accent-soft); color: var(--accent);
+}
+.period:hover { text-decoration: none; opacity: .85; }
+.bio { margin: 16px 0 0; max-width: 62ch; color: var(--ink-soft); font-size: 14.5px; }
+.source { margin: 14px 0 0; font-size: 13px; }
+.composer-works .results-head { margin-bottom: 18px; }

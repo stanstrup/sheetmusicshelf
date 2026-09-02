@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ composer.canonical_name }} &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<article class="composer">
+
+  <header class="composer-head">
+    {% if composer.portrait_file %}
+      <figure class="portrait">
+        <img src="/api/v1/composers/{{ composer.id }}/portrait"
+             alt="Portrait of {{ composer.canonical_name }}" width="320" height="400">
+        {% if composer.portrait_credit %}
+          {# Most Commons portraits are CC-BY-SA; the credit is a licence
+             condition, not decoration. #}
+          <figcaption>
+            {% if composer.portrait_source_url %}
+              <a href="{{ composer.portrait_source_url }}" rel="noopener">{{ composer.portrait_credit }}</a>
+            {% else %}{{ composer.portrait_credit }}{% endif %}
+            {% if composer.portrait_license %} &middot; {{ composer.portrait_license }}{% endif %}
+          </figcaption>
+        {% endif %}
+      </figure>
+    {% endif %}
+
+    <div class="composer-meta">
+      <h1>{{ composer.canonical_name }}</h1>
+      <p class="dates">
+        {% if composer.lifespan %}<span>{{ composer.lifespan }}</span>{% endif %}
+        {% if composer.period %}<a class="period" href="/?period={{ composer.period }}">{{ composer.period }}</a>{% endif %}
+        <span class="muted">{{ total }} {{ "piece" if total == 1 else "pieces" }}</span>
+      </p>
+      {% if composer.description %}<p class="bio">{{ composer.description }}</p>{% endif %}
+      {% if composer.wikipedia_url %}
+        <p class="source"><a href="{{ composer.wikipedia_url }}" rel="noopener">Wikipedia</a>{% if composer.wikidata_id %} &middot; <a href="https://www.wikidata.org/wiki/{{ composer.wikidata_id }}" rel="noopener">{{ composer.wikidata_id }}</a>{% endif %}</p>
+      {% elif not composer.enriched_at %}
+        <p class="source muted">Not yet enriched &mdash; run <code>sms composer enrich</code>.</p>
+      {% endif %}
+    </div>
+  </header>
+
+  <section class="composer-works">
+    <div class="results-head">
+      <p class="count-line"><strong>{{ total }}</strong> in the library</p>
+      <nav class="sorts"><a href="/?composer={{ composer.canonical_name | urlencode }}">Open in browse &rarr;</a></nav>
+    </div>
+
+    {% if pieces %}
+      <ul class="grid">
+        {% for piece in pieces %}
+        <li class="card">
+          <a class="thumb" href="/read/{{ piece.id }}" aria-label="Read {{ piece.title or 'untitled' }}">
+            <img loading="lazy" src="/api/v1/pieces/{{ piece.id }}/thumb" alt="" width="320" height="420">
+          </a>
+          <div class="meta">
+            <a class="title" href="/piece/{{ piece.id }}">{{ piece.title or "Untitled" }}</a>
+            <p class="detail">
+              {% if piece.catalog_display %}<span>{{ piece.catalog_display }}</span>{% endif %}
+              {% if piece.music_key %}<span>{{ piece.music_key }}</span>{% endif %}
+              <span>{{ piece.page_count }}&thinsp;pp</span>
+            </p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if total > pieces|length %}
+        <p class="pager"><a href="/?composer={{ composer.canonical_name | urlencode }}">See all {{ total }} &rarr;</a></p>
+      {% endif %}
+    {% endif %}
+  </section>
+
+</article>
+{% endblock %}
