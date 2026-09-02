@@ -447,6 +447,61 @@ async def review_submit(
 
 
 
+# --- page-range editor ----------------------------------------------------
+
+@router.get("/split/{file_id}", response_class=HTMLResponse)
+def split_editor(
+    file_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Response:
+    """Define where each piece starts inside a multi-piece file."""
+    viewer = _viewer(request, session)
+    file_row = session.get(SourceFile, file_id)
+    if file_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such file")
+
+    pieces = list(
+        session.scalars(
+            select(Piece).where(Piece.source_file_id == file_row.id).order_by(Piece.page_start)
+        )
+    )
+    return templates.TemplateResponse(
+        request, "split.html",
+        {
+            "viewer": viewer, "file": file_row, "pieces": pieces,
+            "starts": {p.page_start for p in pieces},
+            "titles": {p.page_start: (p.title or "") for p in pieces},
+        },
+    )
+
+
+@router.post("/split/{file_id}")
+async def split_apply(
+    file_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    from .ingest.split import Boundary, apply_splits
+
+    viewer = _viewer(request, session)
+    file_row = session.get(SourceFile, file_id)
+    if file_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such file")
+
+    form = await request.form()
+    boundaries = []
+    for raw in form.getlist("start"):
+        try:
+            page = int(raw)
+        except (TypeError, ValueError):
+            continue
+        boundaries.append(Boundary(page, (form.get(f"title_{page}") or "").strip()))
+
+    apply_splits(session, file_row, boundaries, user_id=viewer.user_id)
+    return RedirectResponse(f"/split/{file_row.id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 # --- PWA ------------------------------------------------------------------
 
 @router.get("/manifest.webmanifest")

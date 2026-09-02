@@ -20,6 +20,9 @@
     <p class="actions">
       <a class="button" href="/read/{{ piece.id }}">Read</a>
       <a class="button ghost" href="/api/v1/pieces/{{ piece.id }}/pdf">Open the PDF</a>
+      {% if file.page_count > piece.page_count or siblings %}
+        <a class="button ghost" href="/split/{{ file.id }}">Edit page ranges</a>
+      {% endif %}
     </p>
 
     <dl class="facts">

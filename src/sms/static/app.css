@@ -425,3 +425,43 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
 .review-actions .button { border: 1px solid transparent; cursor: pointer; font: inherit; font-size: 14px; }
 .button.danger { background: transparent; color: var(--alert); border-color: var(--rule); }
 .hint { font-size: 12px; margin: 0; }
+
+/* --- page-range editor -------------------------------------------------- */
+
+.split { max-width: 1300px; margin: 0 auto; padding: 24px 20px 64px; }
+.split-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  flex-wrap: wrap; gap: 14px;
+  padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--rule);
+}
+.split-head h1 { font-family: var(--serif); font-size: 26px; margin: 0; }
+.split-head p { margin: 4px 0 0; font-size: 13px; }
+.split-hint { max-width: 34ch; }
+
+.split-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.split-actions.top { position: sticky; top: 62px; z-index: 10;
+  background: var(--paper); padding: 10px 0; margin-top: 0; }
+.split-actions .button { cursor: pointer; border: 1px solid transparent; font: inherit; font-size: 14px; }
+
+.pagegrid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px 12px;
+}
+.pagecell { min-width: 0; }
+.pagemark { display: block; position: relative; cursor: pointer; }
+.pagemark img {
+  width: 100%; height: auto; display: block; background: #fff;
+  border: 2px solid var(--rule-soft); border-radius: 3px;
+}
+.pagecell.start .pagemark img { border-color: var(--accent); }
+.pagemark input { position: absolute; top: 6px; left: 6px; width: 17px; height: 17px; cursor: pointer; }
+.pagenum {
+  position: absolute; bottom: 4px; right: 5px;
+  font-family: var(--mono); font-size: 10.5px;
+  background: var(--surface); color: var(--ink-soft);
+  padding: 0 4px; border-radius: 2px;
+}
+.pagetitle {
+  width: 100%; margin-top: 5px; padding: 4px 7px; font: inherit; font-size: 12.5px;
+  color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
+}
