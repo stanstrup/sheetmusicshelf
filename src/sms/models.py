@@ -230,6 +230,12 @@ class Piece(Base):
     review_state: Mapped[str] = mapped_column(String(10), default="pending", index=True)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: What the adapter observed while reading the file ("collection index 537",
+    #: "toc says 8pp, file has 12pp"). Kept apart from the scorer's own notes so
+    #: recomputing can rebuild one without losing the other.
+    notes_ingest: Mapped[list] = mapped_column(JSONB, default=list)
+    #: Everything worth telling a reviewer: the adapter's notes plus the
+    #: scorer's. Rebuilt on every recompute.
     notes_machine: Mapped[list] = mapped_column(JSONB, default=list)
 
     # Personal fields -- a defined set rather than runtime-definable columns.

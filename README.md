@@ -45,18 +45,24 @@ Agreement is judged on meaning, not spelling: `8 Variations` and
 Routing: **≥ 0.80 auto-accept**, **0.50–0.79 review**, **below that, or any
 conflict, held**. Thresholds are per-collection.
 
-### Measured result on the first collection
+### Measured results
 
-`CD Sheet Music/Mozart - The Complete Works for Piano`, 94 files:
+| Collection | Files | Pieces | accept | review | hold |
+|---|--:|--:|--:|--:|--:|
+| CD Sheet Music: Mozart | 87 | 87 | **79** | 4 | 4 |
+| The Sheet Music Archive | 1,366 | 1,366 | 0 | 998 | 368 |
+| Sheet Music Collection (pop) | 477 | 477 | 0 | 358 | 119 |
 
-```
-94 files (7 skipped) -> 87 pieces: 79 accept / 4 review / 4 hold
-```
+The Mozart disc auto-accepts 91% because two independent signals agree on
+nearly every file. The other two auto-accept nothing, and that is the honest
+answer: every value there is inferred from a path or a filename with no second
+source to confirm it. Both are candidates for a lowered `auto_accept` once you
+have spot-checked a sample — which is what per-collection thresholds are for.
 
-Both holds and all four reviews are genuine. One of them is worth describing:
-the disc labels `works/k0355.pdf` as `K001` while its own filename says 355. The
-scorer catches the disagreement and refuses to auto-accept — which is the whole
-point of scoring conflicts rather than picking a winner.
+One Mozart hold is worth describing: the disc labels `works/k0355.pdf` as
+`K001` while its own filename says 355. The scorer catches the disagreement and
+refuses to auto-accept — the whole point of scoring conflicts rather than
+picking a winner.
 
 ---
 
@@ -119,7 +125,8 @@ open internet, so every asset comes from the server.
 
 - **Browse** — faceted by composer, period, form, key, collection and
   cataloguing state. Cards preview each *piece's* own first page, so a work
-  inside a multi-work PDF shows the right page.
+  inside a multi-work PDF shows the right page. Catalogue numbers sort
+  numerically, so Op. 10 no. 9 comes before no. 10 and after Op. 9.
 - **Piece** — metadata, confidence and why, siblings in the same file, other
   copies of the same work.
 - **Reader** — one image per page rather than a whole PDF, so a six-page piece
@@ -127,6 +134,10 @@ open internet, so every asset comes from the server.
   two-up spread; the chrome hides so the whole screen can be score.
 - **Composer** — portrait, dates, derived period, and everything in the library
   by that composer.
+- **Review** — the page image beside the fields, every rival value with its
+  source and weight, one keystroke to accept. Accepting records decisions.
+- **Page ranges** — a thumbnail grid for splitting a book into pieces by hand,
+  the authoritative fallback where a PDF carries no outline.
 
 ### Why pages are rendered server-side
 
@@ -215,14 +226,16 @@ Choices made against that host, not against a clean slate:
 
 ## Status
 
-Built and validated: signal extraction, the CD Sheet Music and generic adapters,
-the scorer, persistence with human-decision precedence, the curation API,
-server-side page rendering, byte-range PDF serving, the browse UI, reader,
-composer enrichment, the managed-tree copier, and the compose deployment.
-91 tests.
+**1,930 pieces catalogued across three collections, 306 composers.**
 
-Next: the review-queue UI and the anthology page-range editor, then adapters for
-`The Sheet Music Archive` and `Sheet Music Collection`, then shelves and
-personal fields.
+Built and validated: signal extraction; four adapters (CD Sheet Music, The
+Sheet Music Archive, the flat lead-sheet folder, and a generic fallback); the
+scorer; persistence where human decisions permanently outrank machine ones; the
+curation API; server-side page rendering; byte-range PDF serving; the browse
+UI, reader, composer pages, review queue and page-range editor; composer
+enrichment; the managed-tree copier; and the compose deployment. 156 tests.
+
+Next: shelves and setlists, personal fields (difficulty, status, rating), and
+MusicBrainz/IMSLP enrichment for works as well as composers.
 
 See `docs/plan.html` for the full plan and phasing.

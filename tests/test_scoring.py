@@ -114,7 +114,7 @@ class TestPieceConfidence:
         score_piece(p)
         assert p.fields["catalog"].conflict is True
         assert route(p.confidence) == "hold"
-        assert any("disagree" in note for note in p.notes)
+        assert any("disagree" in note for note in p.scorer_notes)
 
     def test_damaged_text_cannot_auto_accept(self):
         p = PieceProposal(page_start=1, page_end=1)
@@ -124,7 +124,7 @@ class TestPieceConfidence:
         p.add("title", "8 Variations (on Dieu d�amour)", "toc", 0.75)
         score_piece(p)
         assert route(p.confidence) == "review"
-        assert any("unreadable" in note for note in p.notes)
+        assert any("unreadable" in note for note in p.scorer_notes)
 
 
 class TestRouting:

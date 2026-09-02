@@ -185,7 +185,9 @@ def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floo
 
     piece.confidence = round(confidence, 4)
     piece.route = route_for(piece.confidence, auto_accept=auto_accept, review_floor=review_floor)
-    piece.notes_machine = notes
+    # The adapter's observations survive every recompute; the scorer's are
+    # re-derived each time.
+    piece.notes_machine = list(piece.notes_ingest or []) + notes
 
     for field, column in DENORMALISED.items():
         if field in resolved_values:
@@ -227,6 +229,7 @@ def commit_proposal(
         piece = _piece_for(session, file_row, proposed.page_start, proposed.page_end)
         piece.printed_first_page = proposed.printed_first_page
         piece.printed_last_page = proposed.printed_last_page
+        piece.notes_ingest = list(proposed.notes)
         for candidate in proposed.candidates:
             add_candidate(
                 session, piece, candidate.field, str(candidate.value),

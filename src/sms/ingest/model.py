@@ -73,13 +73,22 @@ class PieceProposal:
     printed_last_page: int | None = None
     fields: dict[str, ResolvedField] = field(default_factory=dict)
     confidence: float = 0.0
+    #: What the adapter observed while reading the file. Durable: persisted and
+    #: carried through every later recompute.
     notes: list[str] = field(default_factory=list)
+    #: What the scorer concluded. Derived, so never persisted as an observation
+    #: -- storing it would duplicate itself on the next recompute.
+    scorer_notes: list[str] = field(default_factory=list)
 
     def add(self, field_name: str, value: Any, source: str, weight: float, note: str = "") -> None:
         """Ignore empty values so adapters can stay free of `if x:` noise."""
         if value is None or (isinstance(value, str) and not value.strip()):
             return
         self.candidates.append(Candidate(field_name, value, source, weight, note))
+
+    @property
+    def all_notes(self) -> list[str]:
+        return [*self.notes, *self.scorer_notes]
 
     def get(self, field_name: str, default: Any = None) -> Any:
         resolved = self.fields.get(field_name)

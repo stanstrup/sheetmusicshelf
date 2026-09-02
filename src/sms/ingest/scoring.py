@@ -238,7 +238,7 @@ def score_piece(piece: PieceProposal) -> PieceProposal:
     conflicted = sorted(name for name, f in piece.fields.items() if f.conflict)
     if conflicted:
         confidence = min(confidence, CONFLICT_CAP)
-        piece.notes.append("signals disagree on " + ", ".join(conflicted))
+        piece.scorer_notes.append("signals disagree on " + ", ".join(conflicted))
 
     # Text a PDF font could not map arrives as U+FFFD.  The piece is identified
     # correctly, but the spelling is damaged and must not be filed as final.
@@ -248,7 +248,7 @@ def score_piece(piece: PieceProposal) -> PieceProposal:
     )
     if damaged:
         confidence = min(confidence, AUTO_ACCEPT - 0.05)
-        piece.notes.append("unreadable characters in " + ", ".join(damaged))
+        piece.scorer_notes.append("unreadable characters in " + ", ".join(damaged))
 
     piece.confidence = round(confidence, 4)
     return piece

@@ -37,6 +37,9 @@ router = APIRouter(include_in_schema=False)
 
 PAGE_SIZE = 60
 
+#: Notes that describe normal structure rather than something to look at.
+BENIGN_NOTES = {"whole-file"}
+
 
 def _query_string(params: dict) -> str:
     from urllib.parse import urlencode
@@ -390,11 +393,19 @@ def review(
             alternatives = [c for c in options if c.value != value]
             fields.append({"name": name, "label": label, "value": value, "candidates": alternatives})
 
+    # Filtered for display only. Assigning to item.notes_machine here would
+    # mutate a mapped attribute inside a GET and be committed on the way out.
+    notes = [n for n in (item.notes_machine or []) if n not in BENIGN_NOTES] if item else []
+    ambiguous = bool(
+        item is not None
+        and any("order is ambiguous" in note for note in (item.notes_machine or []))
+    )
     return templates.TemplateResponse(
         request, "review.html",
         {
             "viewer": viewer, "item": item, "file": file_row, "fields": fields,
-            "outstanding": outstanding, "route": route,
+            "outstanding": outstanding, "route": route, "ambiguous_order": ambiguous,
+            "notes": notes,
             "collection": session.get(Collection, collection) if collection else None,
         },
     )

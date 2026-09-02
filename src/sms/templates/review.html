@@ -49,8 +49,18 @@
         <strong>{{ "%.2f"|format(item.confidence) }}</strong>
         {{ "held — signals disagree" if item.route == 'hold' else "needs review" }}
       </p>
-      {% if item.notes_machine %}
-        <ul class="machine-notes">{% for note in item.notes_machine %}<li>{{ note }}</li>{% endfor %}</ul>
+      {% if notes %}
+        <ul class="machine-notes">{% for note in notes %}<li>{{ note }}</li>{% endfor %}</ul>
+      {% endif %}
+
+      {% if ambiguous_order %}
+        {# The pop collection names files both ways round. A composer that
+           matches nothing on Wikidata is usually a song title in the wrong
+           box, so offer the swap rather than making it a retyping job. #}
+        <p class="swap-hint">
+          <button type="button" id="swap" class="pick">Swap composer and title</button>
+          <span class="muted">the filename order here is not reliable</span>
+        </p>
       {% endif %}
 
       {% for field in fields %}
@@ -93,7 +103,20 @@
 (function () {
   // Clicking a proposed value fills the field rather than submitting, so the
   // reviewer can correct it before committing.
-  document.querySelectorAll(".pick").forEach(function (button) {
+  var swap = document.getElementById("swap");
+  if (swap) {
+    swap.addEventListener("click", function () {
+      var composer = document.getElementById("f_composer");
+      var title = document.getElementById("f_title");
+      if (composer && title) {
+        var held = composer.value;
+        composer.value = title.value;
+        title.value = held;
+      }
+    });
+  }
+
+  document.querySelectorAll(".pick[data-target]").forEach(function (button) {
     button.addEventListener("click", function () {
       var input = document.getElementById(button.dataset.target);
       if (input) { input.value = button.dataset.value; input.focus(); }

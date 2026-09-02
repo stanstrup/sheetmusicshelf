@@ -134,7 +134,7 @@ def _print_rows(
         for piece in proposal.pieces:
             bucket = route(piece.confidence, auto_accept=auto_accept, review_floor=review_floor)
             if show == "problems":
-                interesting = [n for n in piece.notes if n not in BENIGN_NOTES]
+                interesting = [n for n in piece.all_notes if n not in BENIGN_NOTES]
                 if bucket == "accept" and not proposal.warnings and not interesting:
                     continue
             elif show != "all" and bucket != show:
@@ -166,7 +166,7 @@ def _print_rows(
 
 def _print_problems(proposals: list[FileProposal]) -> None:
     warned = [(p.rel_path, w) for p in proposals for w in p.warnings]
-    noted = [(p.rel_path, n) for p in proposals for pc in p.pieces for n in pc.notes
+    noted = [(p.rel_path, n) for p in proposals for pc in p.pieces for n in pc.all_notes
              if n not in BENIGN_NOTES]
     if not warned and not noted:
         return
@@ -196,7 +196,7 @@ def _serialise(root: Path, adapter: str, proposals: list[FileProposal]) -> dict:
                         "page_end": pc.page_end,
                         "printed_first_page": pc.printed_first_page,
                         "confidence": pc.confidence,
-                        "notes": pc.notes,
+                        "notes": pc.all_notes,
                         "fields": {
                             name: {
                                 "value": f.value,
