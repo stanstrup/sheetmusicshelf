@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .auth import Principal, current_principal
 from .config import get_settings
-from .db import get_session
+from .db import commit_now, get_session
 from .models import (
     Collection, Composer, FieldCandidate, Piece, RemovedRange, Shelf, ShelfItem,
     SourceFile, Work,
@@ -468,6 +468,10 @@ async def review_submit(
         piece.reviewed_by = viewer.user_id
         piece.reviewed_at = datetime.now(timezone.utc)
 
+    # Commit before the redirect: the dependency's own commit would land
+    # after the browser has already fetched the next page.
+    commit_now(session)
+
     # Reviewing one specific piece returns to it; working the queue moves on.
     if return_to.startswith("/") and not return_to.startswith("//"):
         target = return_to
@@ -511,7 +515,7 @@ async def piece_delete(
         )
     )
     session.delete(piece)
-    session.flush()
+    commit_now(session)
     return RedirectResponse(
         f"/?collection={collection_id}", status_code=status.HTTP_303_SEE_OTHER
     )
@@ -602,6 +606,7 @@ async def work_link(
         work.match_note = "links cleared by hand"
 
     work.enriched_at = datetime.now(timezone.utc)
+    commit_now(session)
     return RedirectResponse(f"/work/{work.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -635,7 +640,7 @@ async def shelves_create(
     name = (form.get("name") or "").strip()
     if name:
         session.add(Shelf(name=name, owner_id=viewer.user_id))
-        session.flush()
+        commit_now(session)
     return RedirectResponse("/shelves", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -708,6 +713,7 @@ async def piece_personal(
                 ShelfItem(shelf_id=int(shelf_id), piece_id=piece.id, position=(last or 0) + 1)
             )
 
+    commit_now(session)
     return RedirectResponse(f"/piece/{piece.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -763,6 +769,7 @@ async def split_apply(
         boundaries.append(Boundary(page, (form.get(f"title_{page}") or "").strip()))
 
     apply_splits(session, file_row, boundaries, user_id=viewer.user_id)
+    commit_now(session)
     return RedirectResponse(f"/split/{file_row.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 

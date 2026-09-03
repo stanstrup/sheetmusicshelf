@@ -50,6 +50,23 @@ def session_scope() -> Iterator[Session]:
 
 
 def get_session() -> Iterator[Session]:
-    """FastAPI dependency."""
+    """FastAPI dependency.
+
+    Note for anything that mutates and then redirects: FastAPI runs the exit
+    code of a ``yield`` dependency *after* the response has been sent, so this
+    scope's commit lands after the browser has already followed the redirect.
+    Use :func:`commit_now` before returning, or the next page renders the state
+    you just changed away from.
+    """
     with session_scope() as session:
         yield session
+
+
+def commit_now(session: Session) -> None:
+    """Flush a change to the database before the response leaves.
+
+    Redirect-after-POST is the whole reason this exists: without it, accepting
+    a review sent the browser to a page that still showed the piece needing
+    review, and only a manual refresh caught up.
+    """
+    session.commit()
