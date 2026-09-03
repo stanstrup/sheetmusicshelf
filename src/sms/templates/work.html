@@ -71,6 +71,13 @@
     {% if searched %}
       {% if not results.imslp and not results.musicbrainz %}
         <p class="muted small">Nothing found for that. Try the composer's surname plus a title word.</p>
+      {% elif not results.imslp %}
+        {# IMSLP is a public-domain score library, so anything still in
+           copyright -- most of the popular repertoire -- is simply not there. #}
+        <p class="muted small">
+          No IMSLP results. IMSLP only holds public-domain scores, so most
+          popular repertoire will never appear there.
+        </p>
       {% endif %}
 
       {% if results.imslp %}

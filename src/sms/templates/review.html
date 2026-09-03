@@ -48,6 +48,9 @@
       {% if collection %}<input type="hidden" name="collection" value="{{ collection.id }}">{% endif %}
 
       <p class="path"><code>{{ file.rel_path }}</code></p>
+      {% if item.work_id %}
+        <p class="path"><a href="/work/{{ item.work_id }}">Canonical sources &rarr;</a></p>
+      {% endif %}
       <p class="score {{ item.route }}">
         <strong>{{ "%.2f"|format(item.confidence) }}</strong>
         {{ "held — signals disagree" if item.route == 'hold' else "needs review" }}

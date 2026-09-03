@@ -275,13 +275,18 @@ def search(
         # person typing a work name actually means; the broad query is the
         # fallback for when that finds nothing.
         # Lucene defaults to OR, so "Mozart Allegro K.3" scores a work titled
-        # simply "Mozart" above the Allegro. Require every term, and constrain
-        # by artist when the caller knows it.
+        # simply "Mozart" above the Allegro. Require every term instead.
+        #
+        # The artist constraint is tried first but must not be the only shape:
+        # MusicBrainz credits a *work* to its writers, so "Chiquitita" is filed
+        # under Andersson and Ulvaeus, not under ABBA, and constraining by the
+        # performing act would find nothing at all.
         terms = " AND ".join(token for token in query.split() if token)
         artist = surname(composer or "")
-        shapes = [f"work:({terms})"]
+        shapes = []
         if artist:
-            shapes.insert(0, f'work:({terms}) AND artist:"{artist}"')
+            shapes.append(f'work:({terms}) AND artist:"{artist}"')
+        shapes.append(f"work:({terms})")
         shapes.append(query)
 
         for attempt in shapes:
