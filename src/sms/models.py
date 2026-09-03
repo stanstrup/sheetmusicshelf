@@ -214,7 +214,10 @@ class Piece(Base):
         CheckConstraint("page_start >= 1", name="ck_piece_page_start"),
         Index("ix_piece_route", "route", "confidence"),
         Index("ix_piece_catalog_sort", "composer_name", "catalog_system", "catalog_number", "catalog_sub"),
-        Index("ix_piece_file_pages", "source_file_id", "page_start"),
+        # The starting page identifies a piece within its file, so this is
+        # a constraint and not a hint: two pieces starting on the same page is
+        # the duplication bug, not a state worth indexing.
+        UniqueConstraint("source_file_id", "page_start", name="uq_piece_file_page_start"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -224,6 +227,10 @@ class Piece(Base):
     #: File-relative and 1-based -- what the reader needs to open.
     page_start: Mapped[int] = mapped_column(Integer, default=1)
     page_end: Mapped[int] = mapped_column(Integer, default=1)
+    #: True once a person set this range in the page-range editor.  A re-scan
+    #: may then improve everything about the piece except where it ends: the
+    #: boundary is a decision, and decisions outrank the adapter.
+    pages_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     #: The page number *printed in the original volume*, when metadata reveals
     #: it.  A different thing from the above, and never used to navigate.
     printed_first_page: Mapped[int | None] = mapped_column(Integer)

@@ -211,6 +211,48 @@ def resolve_field(field_name: str, candidates: list[Candidate]) -> ResolvedField
     )
 
 
+def combine(outcomes: dict[str, ResolvedField]) -> tuple[float, list[str]]:
+    """Turn resolved fields into one confidence, plus what to tell a reviewer.
+
+    The three routing rules live here and nowhere else.  They used to be
+    written out twice -- once in :func:`score_piece` and again in
+    ``persist.recompute`` -- and the copy that wrote to the database was
+    missing the damaged-text rule, so a title full of U+FFFD auto-accepted in
+    the catalogue while the tested path sent it to review.  Anything that
+    decides how far to trust a piece calls this.
+    """
+    notes: list[str] = []
+
+    # A piece is only as trustworthy as its weakest identifying field, and a
+    # missing identifier is a zero, not a shrug.
+    scores = [
+        0.0 if (resolved := outcomes.get(required)) is None else resolved.confidence
+        for required in REQUIRED_FIELDS
+    ]
+    confidence = min(scores) if scores else 0.0
+
+    # A disagreement anywhere blocks auto-accept, even on a field that does not
+    # identify the piece.  One disc labels k0355.pdf as "K001" while its own
+    # filename says 355 -- the entry may still be broadly right, but which of
+    # the two is correct is a decision for a person, not for a default.
+    conflicted = sorted(name for name, f in outcomes.items() if f.conflict)
+    if conflicted:
+        confidence = min(confidence, CONFLICT_CAP)
+        notes.append("signals disagree on " + ", ".join(conflicted))
+
+    # Text a PDF font could not map arrives as U+FFFD.  The piece is identified
+    # correctly, but the spelling is damaged and must not be filed as final.
+    damaged = sorted(
+        name for name in REQUIRED_FIELDS
+        if (f := outcomes.get(name)) is not None and REPLACEMENT_CHAR in str(f.value)
+    )
+    if damaged:
+        confidence = min(confidence, AUTO_ACCEPT - 0.05)
+        notes.append("unreadable characters in " + ", ".join(damaged))
+
+    return round(confidence, 4), notes
+
+
 def score_piece(piece: PieceProposal) -> PieceProposal:
     """Resolve every field on a piece and set its overall confidence."""
     by_field: dict[str, list[Candidate]] = {}
@@ -223,34 +265,8 @@ def score_piece(piece: PieceProposal) -> PieceProposal:
         if resolved is not None:
             piece.fields[field_name] = resolved
 
-    # A piece is only as trustworthy as its weakest identifying field, and a
-    # missing identifier is a zero, not a shrug.
-    scores = []
-    for required in REQUIRED_FIELDS:
-        resolved = piece.fields.get(required)
-        scores.append(0.0 if resolved is None else resolved.confidence)
-    confidence = min(scores) if scores else 0.0
-
-    # A disagreement anywhere blocks auto-accept, even on a field that does not
-    # identify the piece.  One disc labels k0355.pdf as "K001" while its own
-    # filename says 355 -- the entry may still be broadly right, but which of
-    # the two is correct is a decision for a person, not for a default.
-    conflicted = sorted(name for name, f in piece.fields.items() if f.conflict)
-    if conflicted:
-        confidence = min(confidence, CONFLICT_CAP)
-        piece.scorer_notes.append("signals disagree on " + ", ".join(conflicted))
-
-    # Text a PDF font could not map arrives as U+FFFD.  The piece is identified
-    # correctly, but the spelling is damaged and must not be filed as final.
-    damaged = sorted(
-        name for name in REQUIRED_FIELDS
-        if (f := piece.fields.get(name)) is not None and REPLACEMENT_CHAR in str(f.value)
-    )
-    if damaged:
-        confidence = min(confidence, AUTO_ACCEPT - 0.05)
-        piece.scorer_notes.append("unreadable characters in " + ", ".join(damaged))
-
-    piece.confidence = round(confidence, 4)
+    piece.confidence, notes = combine(piece.fields)
+    piece.scorer_notes.extend(notes)
     return piece
 
 

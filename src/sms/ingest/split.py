@@ -162,19 +162,21 @@ def apply_splits(
         page_end = max(page_end, boundary.page_start)
 
         piece = existing.get(boundary.page_start)
-        if piece is None and was_removed(session, file_row, boundary.page_start, page_end):
+        if piece is None and was_removed(session, file_row, boundary.page_start):
             continue                   # deleted by hand; stays deleted
         if piece is None:
             piece = Piece(
                 source_file_id=file_row.id,
                 page_start=boundary.page_start,
                 page_end=page_end,
+                pages_confirmed=True,
             )
             session.add(piece)
             session.flush()
             result.created += 1
         else:
             piece.page_end = page_end
+            piece.pages_confirmed = True
             result.updated += 1
         _inherit_file_level(session, file_row, piece)
 

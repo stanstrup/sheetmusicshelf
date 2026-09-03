@@ -90,14 +90,19 @@ def upsert_file(session: Session, collection: Collection, signals: FileSignals) 
     return row, changed
 
 
-def was_removed(session: Session, file_row: SourceFile, page_start: int, page_end: int) -> bool:
-    """Whether a person deleted this page range from the catalogue."""
+def was_removed(session: Session, file_row: SourceFile, page_start: int) -> bool:
+    """Whether a person deleted the piece starting on this page.
+
+    Matched on the starting page alone.  Requiring the end page to match too
+    meant a tombstone written after someone narrowed a range no longer
+    described anything the adapter proposed, and the entry they deleted came
+    back on the next scan.
+    """
     return bool(
         session.scalar(
             select(RemovedRange.id).where(
                 RemovedRange.source_file_id == file_row.id,
                 RemovedRange.page_start == page_start,
-                RemovedRange.page_end == page_end,
             ).limit(1)
         )
     )
@@ -106,27 +111,33 @@ def was_removed(session: Session, file_row: SourceFile, page_start: int, page_en
 def _piece_for(
     session: Session, file_row: SourceFile, page_start: int, page_end: int
 ) -> Piece | None:
-    """Find the piece covering this page range, or make one.
+    """Find the piece starting on this page, or make one.
 
-    Matching on the page range rather than on a title means a re-ingest that
-    improves a title updates the existing entry instead of duplicating it.
+    The starting page identifies a piece; the end is a property of it.  Keying
+    on both meant that narrowing a range in the page-range editor and then
+    re-scanning created a second piece at the same starting page, leaving the
+    hand-edited one as a duplicate.
 
-    Returns None for a range someone deleted: a re-scan must not undo a
-    decision a person made.
+    A range someone confirmed by hand is left as they set it.  Otherwise the
+    adapter's current reading of where the piece ends is taken, so a corrected
+    adapter can still improve an untouched entry.
+
+    Returns None for a piece someone deleted: a re-scan must not undo that.
     """
     piece = session.scalar(
         select(Piece).where(
             Piece.source_file_id == file_row.id,
             Piece.page_start == page_start,
-            Piece.page_end == page_end,
         )
     )
-    if piece is None and was_removed(session, file_row, page_start, page_end):
+    if piece is None and was_removed(session, file_row, page_start):
         return None
     if piece is None:
         piece = Piece(source_file_id=file_row.id, page_start=page_start, page_end=page_end)
         session.add(piece)
         session.flush()
+    elif not piece.pages_confirmed and piece.page_end != page_end:
+        piece.page_end = page_end
     return piece
 
 
@@ -218,48 +229,38 @@ def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floo
     machine signals can outvote it, and no re-scan can silently replace it.
     """
     from .model import Candidate as ScoringCandidate
+    from .model import ResolvedField
+    from .scoring import combine
 
     rows = list(session.scalars(select(FieldCandidate).where(FieldCandidate.piece_id == piece.id)))
     by_field: dict[str, list[FieldCandidate]] = {}
     for row in rows:
         by_field.setdefault(row.field, []).append(row)
 
-    resolved_values: dict[str, str] = {}
-    scores: list[float] = []
-    conflicted: list[str] = []
-
+    # Resolve each field to the same shape the scorer produces, so that the
+    # routing rules can be applied by the one function that owns them rather
+    # than restated here.  An accepted value is a decision, so it enters at
+    # full weight and never counts as conflicted.
+    outcomes: dict[str, ResolvedField] = {}
     for field, candidates in by_field.items():
         accepted = next((c for c in candidates if c.accepted), None)
         if accepted is not None:
-            resolved_values[field] = accepted.value
-            if field in ("composer", "title"):
-                scores.append(HUMAN_WEIGHT)
+            outcomes[field] = ResolvedField(
+                field=field, value=accepted.value, confidence=HUMAN_WEIGHT,
+                sources=[accepted.source],
+            )
             continue
 
         resolved = resolve_field(field, [
             ScoringCandidate(c.field, c.value, c.source, min(max(c.weight, 0.01), 1.0)) for c in candidates
         ])
-        if resolved is None:
-            continue
-        resolved_values[field] = str(resolved.value)
-        if resolved.conflict:
-            conflicted.append(field)
-        if field in ("composer", "title"):
-            scores.append(resolved.confidence)
+        if resolved is not None:
+            outcomes[field] = resolved
 
-    for field in ("composer", "title"):
-        if field not in resolved_values:
-            scores.append(0.0)
+    resolved_values = {name: str(f.value) for name, f in outcomes.items()}
+    confidence, notes = combine(outcomes)
 
-    from .scoring import CONFLICT_CAP
-
-    confidence = min(scores) if scores else 0.0
-    notes: list[str] = []
-    if conflicted:
-        confidence = min(confidence, CONFLICT_CAP)
-        notes.append("signals disagree on " + ", ".join(sorted(conflicted)))
-
-    piece.confidence = round(confidence, 4)
+    piece.confidence = confidence
     piece.route = route_for(piece.confidence, auto_accept=auto_accept, review_floor=review_floor)
     # The adapter's observations survive every recompute; the scorer's are
     # re-derived each time.
