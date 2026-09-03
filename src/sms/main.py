@@ -56,6 +56,21 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, same_site="lax")
 
+    @app.middleware("http")
+    async def no_stale_pages(request, call_next):
+        """Never let the browser reuse a catalogue page.
+
+        Accepting a review redirects back to the piece, and without this the
+        browser served its cached copy -- so the page still showed the old
+        review state until a manual refresh. Rendered pages are cheap; page
+        images and portraits set their own long cache lifetimes and are
+        untouched by this.
+        """
+        response = await call_next(request)
+        if response.headers.get("content-type", "").startswith("text/html"):
+            response.headers["Cache-Control"] = "no-store, must-revalidate"
+        return response
+
     api_prefix = "/api/v1"
     app.include_router(catalog.router, prefix=api_prefix)
     app.include_router(collections.router, prefix=api_prefix)

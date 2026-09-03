@@ -50,8 +50,9 @@
       <section class="canonical">
         <h2>Canonical sources <a class="edit" href="/work/{{ work.id }}">edit</a></h2>
         <p class="muted small">
-          Matched on the catalogue number, which is the one identifier that
-          survives every publisher's retitling.
+          {% if work.confirmed %}Chosen by hand.
+          {% else %}Matched automatically on the catalogue number, which is the
+          one identifier that survives every publisher's retitling.{% endif %}
         </p>
         <ul class="linklist">
           {% if work.imslp_url %}
@@ -79,17 +80,42 @@
       </section>
     {% endif %}
 
-    <div class="confidence {{ piece.route }}">
-      <p>
-        <strong>{{ "%.2f"|format(piece.confidence) }}</strong>
-        {% if piece.route == 'accept' %}confident &mdash; catalogued automatically
-        {% elif piece.route == 'review' %}needs a look
-        {% else %}held back{% endif %}
-      </p>
-      {% if piece.notes_machine %}
-        <ul>{% for note in piece.notes_machine %}<li>{{ note }}</li>{% endfor %}</ul>
-      {% endif %}
-    </div>
+    {% if piece.review_state == 'accepted' %}
+      {# Settled by a person. The score and the machine's reasoning are history
+         now, so they fold away rather than taking up the page. #}
+      <details class="confidence settled">
+        <summary>
+          {# %-d is a glibc extension and raises on Windows; compose it instead. #}
+          Confirmed{% if piece.reviewed_at %} on
+            {{ piece.reviewed_at.day }} {{ piece.reviewed_at.strftime('%B %Y') }}{% endif %}
+          <span class="muted">&mdash; how it was catalogued</span>
+        </summary>
+        <p>
+          Reviewed and accepted by hand.
+          The machine had scored it <strong>{{ "%.2f"|format(piece.confidence) }}</strong>
+          before review.
+        </p>
+        {% if piece.notes_machine %}
+          <ul>{% for note in piece.notes_machine %}<li>{{ note }}</li>{% endfor %}</ul>
+        {% endif %}
+      </details>
+    {% elif piece.review_state == 'rejected' %}
+      <div class="confidence hold">
+        <p>Set aside as not music. It is excluded from the catalogue.</p>
+      </div>
+    {% else %}
+      <div class="confidence {{ piece.route }}">
+        <p>
+          <strong>{{ "%.2f"|format(piece.confidence) }}</strong>
+          {% if piece.route == 'accept' %}confident &mdash; catalogued automatically, not yet reviewed
+          {% elif piece.route == 'review' %}needs a look
+          {% else %}held back{% endif %}
+        </p>
+        {% if piece.notes_machine %}
+          <ul>{% for note in piece.notes_machine %}<li>{{ note }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+    {% endif %}
 
     <form class="personal" method="post" action="/piece/{{ piece.id }}/personal">
       <h2>Yours</h2>
