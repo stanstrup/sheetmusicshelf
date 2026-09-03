@@ -11,6 +11,10 @@
   </div>
   <div class="tools">
     <span class="progress" id="progress">1 / {{ pages|length }}</span>
+    <button type="button" class="ink-toggle" id="awake" aria-pressed="false"
+            title="Keep the screen on">Awake</button>
+    <button type="button" class="ink-toggle" id="fullscreen" aria-pressed="false"
+            title="Fullscreen">Full</button>
     <button type="button" class="ink-toggle" data-ink="toggle" aria-pressed="false"
             title="Annotate">Ink</button>
     <a class="spread-toggle" href="?spread={{ 0 if spread else 1 }}">{{ "Single" if spread else "Two-up" }}</a>
@@ -132,4 +136,5 @@
 }());
 </script>
 <script src="/static/annotate.js?v={{ asset_version }}"></script>
+<script src="/static/stayawake.js?v={{ asset_version }}"></script>
 {% endblock %}

@@ -630,20 +630,42 @@ async def split_apply(
 
 @router.get("/manifest.webmanifest")
 def manifest() -> JSONResponse:
+    """What Android needs to install this as an app rather than a bookmark."""
     return JSONResponse(
         {
+            # A stable id, so an install survives the start_url changing.
+            "id": "/?installed=1",
             "name": "Sheet Music Shelf",
             "short_name": "Shelf",
-            "start_url": "/",
+            "start_url": "/?installed=1",
+            "scope": "/",
             "display": "standalone",
+            # Chrome on Android prefers the first mode it supports; falling back
+            # through the list keeps older browsers on plain standalone.
+            "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
             "orientation": "any",
-            "background_color": "#f3f5f8",
+            "background_color": "#0d0f13",
             "theme_color": "#2c4a8c",
+            "description": "A cataloguing server for a personal sheet music library.",
+            "categories": ["music", "productivity"],
             "icons": [
                 {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
                 {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                # Maskable, so Android can crop it to the launcher's shape
+                # instead of dropping the square icon in a white circle.
+                {
+                    "src": "/static/icon-maskable.png",
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "maskable",
+                },
+            ],
+            "shortcuts": [
+                {"name": "Review queue", "url": "/review"},
+                {"name": "Shelves", "url": "/shelves"},
             ],
         },
+        media_type="application/manifest+json",
         headers={"Cache-Control": "public, max-age=3600"},
     )
 

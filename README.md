@@ -139,6 +139,38 @@ open internet, so every asset comes from the server.
 - **Page ranges** — a thumbnail grid for splitting a book into pieces by hand,
   the authoritative fallback where a PDF carries no outline.
 
+## Annotations
+
+Marks are a layer over the page, never a change to the PDF. Pen, highlighter
+and eraser in the reader; whole strokes erase rather than pixels, because on a
+score you want the mark gone.
+
+**Coordinates are normalised to 0..1 of the page box, not pixels.** The same
+page is served at 320/800/1200/1800px depending on the device asking, and a
+phone turned to landscape asks for a different one again — pixel coordinates
+would put the ink in the wrong place on every surface but the one it was drawn
+on. Verified by drawing on a page and switching to the two-up spread: the
+stroke stays over the same notes at a completely different size.
+
+Originals are untouched: `k0283.pdf` still carries its 2004 mtime after a page
+of ink. Clearing every annotation leaves the library exactly as it was.
+
+## On the phone
+
+Installable as a PWA — maskable icon, a stable id, shortcuts to the review
+queue and shelves. Two reader controls exist for one specific reason: your
+hands are on the keys.
+
+- **Awake** holds a screen wake lock, so a score does not dim mid-phrase. It
+  hides itself where the browser has no Wake Lock API rather than offering a
+  button that cannot work, and re-acquires after the tab comes back, because
+  the browser drops the lock whenever the tab is hidden.
+- **Full** goes fullscreen.
+
+There is no native Android client, and it is not currently needed: offline
+access was explicitly out of scope, and in-app annotation now works in the
+browser. Those were the two things a native app would have bought.
+
 ### Why pages are rendered server-side
 
 **87% of this library has no text layer.** The things a browser PDF viewer buys
@@ -233,9 +265,10 @@ Sheet Music Archive, the flat lead-sheet folder, and a generic fallback); the
 scorer; persistence where human decisions permanently outrank machine ones; the
 curation API; server-side page rendering; byte-range PDF serving; the browse
 UI, reader, composer pages, review queue and page-range editor; composer
-enrichment; the managed-tree copier; and the compose deployment. 156 tests.
+enrichment; annotations; the managed-tree copier; shelves and personal fields;
+and the compose deployment. 166 tests.
 
-Next: shelves and setlists, personal fields (difficulty, status, rating), and
-MusicBrainz/IMSLP enrichment for works as well as composers.
+Next: MusicBrainz/IMSLP enrichment for *works* (composers are done), and
+duplicate detection and merge for the pop collection.
 
 See `docs/plan.html` for the full plan and phasing.
