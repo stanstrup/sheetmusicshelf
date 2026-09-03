@@ -126,3 +126,46 @@ _(nothing outstanding — add items here)_
    filed as three overlapping series -- tchpc1a1..a6, b1, b2, c1..c3 -- so
    "movement 1" names three different files and there is no single order to put
    them in. Left split rather than guessed at.
+
+20) ~~act on the independent architecture review~~ — all eight findings, plus
+   the test strategy it argued for. In its own ranking:
+
+   1. **`recompute` was a second, divergent scorer** — and the one that writes
+      to the database. It was missing the damaged-text rule, so a title of
+      U+FFFD replacement characters scored 0.955 and auto-accepted while
+      `score_piece`, the one the tests exercise, returned 0.75 and sent it to
+      review. The rules now live in `scoring.combine` and both callers use it.
+   2. **Piece identity was the exact page pair.** Narrowing a range by hand and
+      re-scanning made a second piece, and a tombstone for the narrowed range
+      no longer matched what the adapter proposed, so a deleted entry came
+      back. `page_start` now identifies a piece, with a unique constraint, and
+      a range set by hand is marked confirmed.
+   3. **Three ways to find a file**, one of which built its path from the
+      unmounted source directory — so the curation text endpoint returned 410
+      for the whole catalogue. One `resolve_source` now.
+   4. **`_refile` recorded the path it wanted**, not the one it used when the
+      name was taken, pointing the row at another piece's PDF with renders
+      cached under the wrong hash. Mine, from earlier today.
+   5. **An agent could never withdraw a proposal.** One wrong value held a
+      piece for good. `POST /curation/retractions`.
+   6. **Accept froze six machine guesses as human truth.** Route came only from
+      confidence, so the only way out of the queue was to accept field after
+      field. Reviewing is now its own fact; only changed fields become
+      decisions.
+   7. **The instrument axis did not exist** — collected, confirmed in review,
+      then discarded. One of the three original requirements, three-quarters
+      built. Backfilled from 1,324 candidates already stored.
+   8. **Jobs**: a dead worker's job stayed `running` for ever; filing was
+      CLI-only so the tree drifted from the catalogue between manual runs.
+
+   Also `sms verify` (drift is a thing that happens here and there was no way
+   to find out), one shared filter builder for the browse page and the API,
+   and the ingest folder no longer deletes a dropped file on matching size
+   alone with the hash sitting unused.
+
+   The review's most useful finding was a negative one: **`web.py` is not the
+   problem.** Twenty-five independent handlers averaging thirty lines. The one
+   thing worth extracting was the query builder it duplicated with the API.
+
+   Tests went from 256 pure to 308, with a PostgreSQL fixture for the seams.
+   Every fault above lived in a seam between two separately-tested things.

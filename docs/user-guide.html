@@ -358,6 +358,7 @@ sms work years          # composition year, read from the IMSLP page already lin
         <tr><td class="mono">sms work years</td><td>Composition years</td></tr>
         <tr><td class="mono">sms composer sync / enrich</td><td>Composer records and portraits</td></tr>
         <tr><td class="mono">sms token create / list / revoke</td><td>API credentials</td></tr>
+        <tr><td class="mono">sms verify</td><td>Check the catalogue and the disk still agree</td></tr>
         <tr><td class="mono">sms db upgrade</td><td>Apply migrations</td></tr>
         <tr><td class="mono">sms worker</td><td>Run the background worker</td></tr>
       </tbody>
@@ -383,6 +384,11 @@ sms work years          # composition year, read from the IMSLP page already lin
 
   <h3>A "book" is decided by piece count</h3>
   <p>A file with more than one piece is filed under <code>_Books\</code>. If a merged or multi-movement file lands there unexpectedly, it is because something split it into several pieces — fix the pieces and re-run <code>materialise</code>, and it will move.</p>
+
+  <h3>Run <code>sms verify</code> after anything that moves files</h3>
+  <p>Copying and filing are not covered by the database transaction, so a run
+  that fails part-way leaves the rows rolled back and the moves done. It
+  reports and never fixes, so it is safe to run any time.</p>
 
   <h3>Deleting is about the catalogue, not the disk</h3>
   <p>Nothing in the app deletes a source PDF. The strongest thing a delete does is remove the library copy, which <code>materialise</code> can rebuild.</p>

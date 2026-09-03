@@ -103,7 +103,7 @@
 <header class="top">
   <p class="eyebrow">Sheet Music Shelf · how the code is put together</p>
   <h1>Sheet Music Shelf Internals</h1>
-  <p class="standfirst">9,000 lines of Python across 39 modules. The shape of it follows from one decision — that a file is not a catalogue entry — and one promise: a person's judgement outranks the machine's, permanently.</p>
+  <p class="standfirst">9,600 lines of Python across 41 modules. The shape of it follows from one decision — that a file is not a catalogue entry — and one promise: a person's judgement outranks the machine's, permanently.</p>
 </header>
 
 <nav class="toc">
@@ -189,7 +189,9 @@ graph LR
     <div class="group">
       <h4>Library, rendering and enrichment</h4>
       <dl>
-        <dt>library.py</dt><dd class="loc">320</dd><dd>The managed tree: paths, copying, re-filing, the drop folder</dd>
+        <dt>library.py</dt><dd class="loc">356</dd><dd>The managed tree: paths, copying, re-filing, the drop folder</dd>
+        <dt>catalog_query.py</dt><dd class="loc">118</dd><dd>The one place that knows how to narrow the catalogue</dd>
+        <dt>verify.py</dt><dd class="loc">137</dd><dd>Finds the ways the catalogue and the disk drift apart</dd>
         <dt>render.py</dt><dd class="loc">131</dd><dd>PDF pages to WebP at four widths, cached by hash</dd>
         <dt>enrich/canonical.py</dt><dd class="loc">479</dd><dd>IMSLP and MusicBrainz matching</dd>
         <dt>enrich/wikipedia.py</dt><dd class="loc">403</dd><dd>Wikidata-first composer records and portraits</dd>
@@ -269,7 +271,8 @@ should_ignore(rel_path) -> bool</code></pre>
 <section id="scoring">
   <div class="col">
     <h2><span class="num">05</span>Scoring</h2>
-    <p><code>ingest/scoring.py</code> is small and carries most of the risk. Four ideas.</p>
+    <p><code>ingest/scoring.py</code> is small and carries most of the risk. Four ideas, and one function.</p>
+    <p><code>combine()</code> turns resolved fields into one confidence and the notes a reviewer sees. It is the only place the routing rules are written. They used to be written twice — once here and again in <code>persist.recompute</code> — and the copy that wrote to the database was missing the damaged-text rule, so a title of replacement characters auto-accepted in the catalogue while the tested path sent it to review. Anything deciding how far to trust a piece calls <code>combine()</code>.</p>
 
     <h3>Folding</h3>
     <p>Values are compared after per-field normalisation, so <code>Sonata No. 1</code>, <code>Sonata #1</code> and <code>Sonata no.1</code> are one value rather than three competing ones. Titles get extra treatment: number words expand, and a title is <em>subsumed</em> by a longer one that contains it, so <code>Children's Corner</code> and <code>Children's Corner, no. 1</code> merge rather than fight — with the longer, more specific string kept.</p>
@@ -301,6 +304,7 @@ should_ignore(rel_path) -> bool</code></pre>
 
     <p>So each candidate records the <code>adapter</code> that made it. On a re-scan, that adapter's own unaccepted readings that it no longer makes are withdrawn — including a field it has stopped claiming altogether. Accepted candidates and anything posted through the curation API carry no adapter and are never touched, which is what keeps the invariant intact while still letting a bug fix take effect.</p>
     <p>The matching projection rule: a field whose last candidate is gone is <em>cleared</em> from the piece row rather than left standing. Otherwise an adapter could withdraw a reading and the value it produced would still show in the catalogue — and still group works by it.</p>
+    <p>Agents get the same right through <code>POST /curation/retractions</code>. Retirement is scoped to the adapter that made a reading, so a candidate posted through the API — which has no adapter — was permanently unretirable: one wrong value at 0.65 conflicts with the right one, caps the field at 0.45, and holds the piece for good. An agent has to be able to be wrong reversibly. A <em>decision</em> is not a proposal and is never withdrawn this way; correcting one means accepting a different value, which stays on the record as its own decision.</p>
   </div>
 </section>
 
@@ -314,7 +318,7 @@ should_ignore(rel_path) -> bool</code></pre>
     <table>
       <thead><tr><th class="mono">Table</th><th>Holds</th><th>Worth knowing</th></tr></thead>
       <tbody>
-        <tr><td class="mono">piece</td><td>A page range that is one catalogue entry</td><td>Carries both resolved values and personal fields (rating, status, notes, tags). <code>movement</code> orders parts of a split work.</td></tr>
+        <tr><td class="mono">piece</td><td>A page range that is one catalogue entry</td><td><strong>Identified by <code>(source_file_id, page_start)</code></strong>, with a unique constraint saying so. Carries resolved values, personal fields, <code>movement</code>, <code>instrumentation</code>, and <code>pages_confirmed</code> for a range a person set.</td></tr>
         <tr><td class="mono">work</td><td>The music itself</td><td>Owns <code>imslp_url</code>, <code>musicbrainz_id</code>, <code>musicbrainz_title</code>, <code>year</code>, <code>year_note</code>, <code>confirmed</code></td></tr>
         <tr><td class="mono">source_file</td><td>One PDF</td><td><code>managed_path</code> is where the library copy lives; resolution prefers it and falls back to the original</td></tr>
         <tr><td class="mono">field_candidate</td><td>Every signal, ever</td><td><code>accepted</code> marks a decision; <code>adapter</code> marks who read it</td></tr>
@@ -342,6 +346,7 @@ should_ignore(rel_path) -> bool</code></pre>
       <li><code>_prune_empty()</code> — removes folders a move emptied, stopping at the library root; a composer folder left behind after their last piece moved out reads as a piece still being there</li>
       <li><code>_claimed_by_another()</code> — stops two catalogue rows sharing one file. Size is not identity: the pop collection holds the same arrangement twice under different numbers, and matching on size alone let the second row point at the first row's copy and never get one of its own</li>
     </ul>
+    <p><code>resolve_source()</code> is the one way to find a file: the library copy when there is one, the original otherwise. Three call sites used to resolve three ways, and the odd one out built its path from the collection's source directory — which stopped being mounted when the library became authoritative, so that endpoint returned 410 for the whole catalogue while the page renderer, reading the same rows, worked.</p>
     <p>The drop folder is the same machinery pointed at a queue. <code>ingest_collection()</code> owns it, <code>clear_ingested()</code> empties it — checking the copy actually on disk rather than the database, because removing something from a drop folder is only safe once the library really holds it.</p>
 
     <div class="note">
@@ -366,6 +371,7 @@ should_ignore(rel_path) -> bool</code></pre>
 <section id="jobs" class="col">
   <h2><span class="num">10</span>Jobs and rendering</h2>
   <p>The queue is a table. <code>claim_one()</code> takes a job with <code>FOR UPDATE SKIP LOCKED</code>, handlers register by kind through a decorator, and the worker loops. Adding Redis to a stack that already runs PostgreSQL would be a second thing to operate for no gain at this size.</p>
+  <p>A worker killed mid-job leaves it <code>running</code> with nothing to notice: no lease, no heartbeat, and the row lock dies with the connection. <code>reclaim_stale()</code> returns jobs stuck past four hours to the queue, and fails one that has killed three workers rather than retrying for ever. Filing is a job too, queued (deduplicated) when review changes a name, because the library folder is named from that metadata and letting the tree drift is letting the catalogue lie about where things are.</p>
   <p>The worker also yields to the machine: <code>wait_for_headroom()</code> pauses between files while the one-minute load average is above <code>SMS_LOAD_CEILING</code>. On a four-core box carrying dozens of containers, a scan that ignores load is not a slow scan — it is an outage for everything else.</p>
   <p>Rendering goes through <code>render.py</code>: pages to WebP at 320, 800, 1200 and 1800, cached under a key derived from the file's content hash, so an unchanged file reuses renders across re-scans and an edited one gets fresh images automatically.</p>
   <div class="note">
@@ -382,28 +388,30 @@ should_ignore(rel_path) -> bool</code></pre>
 
 <section id="tests" class="col">
   <h2><span class="num">12</span>Tests and migrations</h2>
-  <p>256 tests, 1,335 lines, all pure unit tests — there is no database fixture and no <code>conftest.py</code>. That is a consequence of the pipeline's shape: adapters take a <code>FileSignals</code> dataclass, the scorer takes a list of candidates, catalogue and key parsing take strings. The parts with the most subtle logic are the easiest to test.</p>
-  <p>The cost is that persistence, the web layer and the library tree are covered only indirectly. Where a decision inside a database function matters, it gets extracted into a pure function so it can be tested — <code>is_superseded()</code> is the example — and filing logic is tested against <code>tmp_path</code> rather than the real tree.</p>
-  <p>Eleven Alembic migrations. A column added to a populated table gets a <code>server_default</code> first and the constraint after; a data backfill belongs in the migration that needs it, as with attributing existing candidates to the adapter that made them.</p>
+  <p>308 tests, 2,253 lines. Most are pure — adapters take a <code>FileSignals</code> dataclass, the scorer takes a list of candidates, catalogue and key parsing take strings — which is why the suite runs in seven seconds and why the parts with the subtlest logic are the easiest to test.</p>
+  <p>That was the whole strategy until an independent review found what it was hiding. <code>score_piece</code> and <code>persist.recompute</code> had drifted into two versions of the same rules, and only <code>score_piece</code> was tested: a rule was asserted, was real, and never ran on the path that writes to the catalogue. Nothing pure could have caught it, because the fault was in the seam between two tested things.</p>
+  <p>So there is now a <code>conftest.py</code> with a PostgreSQL fixture — the models use JSONB and the queue uses <code>FOR UPDATE SKIP LOCKED</code>, so SQLite would be testing something else — pointed at a scratch database by <code>SMS_TEST_DATABASE_URL</code>, and <em>skipped</em> rather than failed when none is reachable, so a checkout with no database still runs the rest. Three files cover the seams: <code>test_persistence.py</code> (routing, the human-outranks-machine promise, retirement, tombstones, retraction), <code>test_jobs.py</code> (claiming, reclaiming, queueing once) and <code>test_routes_smoke.py</code>, which calls every page and read endpoint once and asserts only that they answer — twenty lines that would have caught the 410.</p>
+  <p>Thirteen Alembic migrations. A column added to a populated table gets a <code>server_default</code> first and the constraint after; a data backfill belongs in the migration that needs it, as with attributing existing candidates to the adapter that made them.</p>
 </section>
 
 <section id="edges" class="col">
   <h2><span class="num">13</span>Sharp edges</h2>
-  <p>Things that will bite someone changing this code, in rough order of likelihood:</p>
+  <p>Things that will bite someone changing this code.</p>
   <ul>
-    <li><strong><code>web.py</code> is 924 lines</strong> and growing with every feature. It is the clearest structural debt in the tree.</li>
     <li><strong>Commit before redirecting.</strong> See §09. It looks like a caching bug every single time.</li>
     <li><strong>Hold the PDFium lock.</strong> See §10.</li>
-    <li><strong>Filesystem operations are not transactional.</strong> See §08.</li>
-    <li><strong>Weights are magic numbers</strong> spread across adapters as named constants. They are readable in place but there is no global view of how they interact, and no test asserts the ordering between them.</li>
-    <li><strong>Adding a candidate field</strong> means touching <code>KNOWN_FIELDS</code>, possibly <code>DENORMALISED</code>, possibly <code>_INT_COLUMNS</code>, and a migration. There is no single place that declares a field.</li>
+    <li><strong>Filesystem operations are not transactional.</strong> See §08 — and run <code>sms verify</code> after anything that moves files in bulk, because that is the only way to find out.</li>
+    <li><strong>Weights are magic numbers</strong> spread across adapters as named constants. Readable in place, but there is no global view of how they interact and no test asserts the ordering between them.</li>
+    <li><strong>Adding a candidate field</strong> means touching <code>KNOWN_FIELDS</code>, possibly <code>DENORMALISED</code>, possibly <code>_INT_COLUMNS</code>, and a migration. There is still no single place that declares a field. Adding a <em>filter</em>, by contrast, is now one field and one line in <code>catalog_query.py</code>.</li>
     <li><strong>A file with more than one piece is a "book"</strong> and files under <code>_Books/</code>. Anything that changes how many pieces a file has changes where it lives on disk.</li>
     <li><strong>Adapters must stay pure.</strong> They see <code>FileSignals</code> and a context, never the database and never the filesystem. Reaching outside that is what makes them untestable.</li>
+    <li><strong><code>Instrument</code> and <code>PieceInstrument</code> are unused.</strong> Instrumentation is a denormalised string on the piece, because a folder called <code>violpian</code> says "violin and piano" and nothing finer. A normalised model should wait for evidence that supports one.</li>
   </ul>
+  <p class="muted" style="color:var(--ink-faint)"><strong>Not a sharp edge:</strong> <code>web.py</code>'s length. It reads as a flat list of about twenty-five independent handlers averaging thirty lines, and an outside review of this codebase concluded that splitting it buys tidiness and nothing else. The one thing worth extracting from it was the query builder it duplicated with the API, and that has been done.</p>
 </section>
 
 <footer>
-  <p>Python 3.13, FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL 16, pypdfium2, Jinja2, Typer. 9,070 lines in <code>src/sms</code>, 1,335 in <code>tests</code>, 11 migrations. Current as of 3 September 2026.</p>
+  <p>Python 3.13, FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL 16, pypdfium2, Jinja2, Typer. 9,618 lines in <code>src/sms</code>, 2,253 in <code>tests</code>, 13 migrations, 308 tests. Current as of 3 September 2026.</p>
 </footer>
 
 </div>
