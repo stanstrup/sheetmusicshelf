@@ -1,0 +1,484 @@
+<title>Split-Work Repair</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #F2F3F1;
+    --card: #FBFBFA;
+    --ink: #16181A;
+    --ink-soft: #5C6360;
+    --ink-faint: #868C88;
+    --accent: #1F4E5F;
+    --accent-soft: #E3ECEE;
+    --retired: #8C4A2F;
+    --retired-soft: #F2E6E0;
+    --rule: #D7DAD6;
+    --rule-soft: #E7E9E6;
+    --serif: "Spectral", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141614;
+      --card: #1C1F1D;
+      --ink: #E8EAE6;
+      --ink-soft: #A3AAA5;
+      --ink-faint: #7C837E;
+      --accent: #6FB3C4;
+      --accent-soft: #1B2E34;
+      --retired: #D08A66;
+      --retired-soft: #2E211A;
+      --rule: #2E332F;
+      --rule-soft: #232724;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141614;
+    --card: #1C1F1D;
+    --ink: #E8EAE6;
+    --ink-soft: #A3AAA5;
+    --ink-faint: #7C837E;
+    --accent: #6FB3C4;
+    --accent-soft: #1B2E34;
+    --retired: #D08A66;
+    --retired-soft: #2E211A;
+    --rule: #2E332F;
+    --rule-soft: #232724;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 20px 96px;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  .col { max-width: 68ch; }
+
+  header.top {
+    padding: 60px 0 30px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(34px, 5.4vw, 52px);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: clamp(17px, 2.2vw, 20px);
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 8px;
+  }
+
+  .ledger {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: 0;
+    border-bottom: 1px solid var(--rule);
+    margin: 0 0 52px;
+  }
+  .ledger div {
+    padding: 18px 16px 20px 0;
+  }
+  .ledger .n {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: block;
+  }
+  .ledger .l {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-top: 7px;
+  }
+
+  section { margin: 0 0 52px; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  h2 .step {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 9px;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin: 28px 0 6px;
+  }
+  p { margin: 0 0 15px; }
+  .col p:last-child { margin-bottom: 0; }
+  a { color: var(--accent); }
+
+  code, .mono { font-family: var(--mono); font-size: 0.875em; }
+  code {
+    background: var(--rule-soft);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .evidence {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px;
+    margin: 22px 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.75;
+    overflow-x: auto;
+  }
+  .evidence .cap {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 9px;
+  }
+
+  /* The page-number continuity run: the actual evidence for the order. */
+  .run {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 20px 0 8px;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    overflow-x: auto;
+  }
+  .run div {
+    flex: 1 1 auto;
+    min-width: 92px;
+    padding: 11px 12px 12px;
+    border-right: 1px solid var(--rule);
+  }
+  .run div:last-child { border-right: 0; }
+  .run .part {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    display: block;
+  }
+  .run .pp {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    display: block;
+    margin-top: 3px;
+  }
+  figcaption {
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+  }
+
+  .tablewrap { overflow-x: auto; margin: 22px 0 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 620px; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--ink-faint);
+    padding: 0 12px 8px 0;
+    border-bottom: 1px solid var(--ink);
+    white-space: nowrap;
+  }
+  td {
+    padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
+  tr.total td { border-top: 1px solid var(--ink); border-bottom: 0; font-weight: 600; padding-top: 10px; }
+  .drop { color: var(--retired); font-weight: 600; }
+  .zero { color: var(--ink-faint); }
+
+  .note {
+    border-left: 3px solid var(--retired);
+    background: var(--retired-soft);
+    padding: 15px 18px;
+    margin: 24px 0;
+    font-size: 14.5px;
+  }
+  .note strong { font-weight: 600; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .keep {
+    border: 1px solid var(--rule);
+    background: var(--card);
+    padding: 16px 18px;
+    margin: 24px 0;
+    font-size: 14.5px;
+  }
+  .keep p:last-child { margin-bottom: 0; }
+
+  ul.plain { margin: 0 0 15px; padding-left: 20px; }
+  ul.plain li { margin-bottom: 7px; }
+
+  dl.kinds { margin: 20px 0; display: grid; grid-template-columns: max-content 1fr; gap: 10px 20px; align-items: baseline; }
+  dl.kinds dt {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  dl.kinds dd { margin: 0; font-size: 14.5px; }
+  dl.kinds dd .verdict { display: block; font-size: 12.5px; color: var(--ink-faint); margin-top: 2px; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    margin-top: 60px;
+    padding-top: 20px;
+    font-size: 13px;
+    color: var(--ink-faint);
+  }
+  footer p { margin: 0 0 7px; }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Sheet Music Shelf · data repair · 3 September 2026</p>
+  <h1>Split-Work Repair</h1>
+  <p class="standfirst">The Sheet Music Archive files long works as one PDF per part. Fifteen of them are now one file each — and the reasoning that decided which fifteen mattered more than the merging did.</p>
+</header>
+
+<div class="ledger">
+  <div><span class="n">15</span><span class="l">works merged</span></div>
+  <div><span class="n">118</span><span class="l">parts joined</span></div>
+  <div><span class="n">10</span><span class="l">repeated pages cut</span></div>
+  <div><span class="n">778</span><span class="l">pages, from 788</span></div>
+  <div><span class="n">1</span><span class="l">case left open</span></div>
+</div>
+
+<section class="col">
+  <h2><span class="step">The problem</span>A concerto catalogued as three concertos</h2>
+  <p><code>grieg/con_amin/</code> holds <code>conamin1.pdf</code>, <code>conamin2.pdf</code> and <code>conamin3.pdf</code>. That is one concerto in three movements, and the catalogue had it as three separate concertos — three entries to open in turn, with no way to play through the piece.</p>
+  <p>Fixing the grouping was the easy half and was done earlier: fourteen archive folders that name a single work are now listed by hand in the adapter, so their files share a title and fold into one work. But the <em>files</em> were still separate. This repair joins them.</p>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="step">Step 1</span>Which multi-file works are actually split</h2>
+    <p>69 works held more than one file. Merging all of them would have been badly wrong — a work has several files for at least four different reasons, and only one of them wants merging.</p>
+  </div>
+
+  <dl class="kinds">
+    <dt>split</dt>
+    <dd>One file per movement or section, in sequence.
+      <span class="verdict">15 works — merge these</span></dd>
+    <dt>editions</dt>
+    <dd>The same piece twice from different sources: <code>cnoc27_2.pdf</code> (6pp) and <code>noct27_2.pdf</code> (5pp), both Nocturne Op. 27 no. 2.
+      <span class="verdict">leave alone — merging would print the same music twice</span></dd>
+    <dt>arrangement</dt>
+    <dd><code>k401-2h.pdf</code> and <code>k401-4h.pdf</code> — the same fugue for two hands and for four.
+      <span class="verdict">leave alone — different music to play</span></dd>
+    <dt>misgrouped</dt>
+    <dd><code>maz_a.pdf</code> and <code>maz_b.pdf</code>, two different mazurkas that both ended up titled just “Mazurka”.
+      <span class="verdict">leave alone — a grouping fault, not a split</span></dd>
+  </dl>
+
+  <div class="col">
+    <p>The test used is deliberately strict, and leans on a judgement already made rather than inventing a second one: the adapter must have marked every file as part of a split work, all the files must come from one folder of one collection, none may be named as an alternate take (<code>(v2)</code>), and the parts must fall into an order with no ties.</p>
+    <p>Everything else was left exactly as it was. Bach's <em>Well-Tempered Clavier</em> alone contributes 18 works to the “leave alone” pile: each number has both a <code>pre&amp;fugN.pdf</code> holding prelude and fugue together and a <code>preludN.pdf</code> holding only the prelude. Joining those would have duplicated every prelude in the set.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="step">Step 2</span>Establishing the order</h2>
+    <p>The filenames give the order, except where they don't. Liszt's first concerto is filed as <code>lispc1_a</code>, <code>liszpc1b</code>, <code>lispc1c</code>, <code>liszpc1d</code> — the stem is not even spelled the same way from one part to the next, so sorting on the filename interleaves them wrongly. The trailing letter is the real sequence.</p>
+    <p>None of these PDFs carry any metadata at all — no title, no subject, nothing — so the claim had to be checked against the scans themselves. Rendering the top band of the first and last page of each part shows the publisher's printed page numbers:</p>
+  </div>
+
+  <figure style="margin:0">
+    <div class="run">
+      <div><span class="part">lispc1_a</span><span class="pp">→ 10</span></div>
+      <div><span class="part">liszpc1b</span><span class="pp">11–21</span></div>
+      <div><span class="part">lispc1c</span><span class="pp">22–28</span></div>
+      <div><span class="part">liszpc1d</span><span class="pp">29–42</span></div>
+      <div><span class="part">liszpc1e</span><span class="pp">43–52</span></div>
+      <div><span class="part">lispc1f</span><span class="pp">53–62</span></div>
+      <div><span class="part">liszpc1g</span><span class="pp">63–72</span></div>
+      <div><span class="part">lispc1h</span><span class="pp">73–82</span></div>
+    </div>
+    <figcaption>Unbroken from 10 to 82. The letter order a–h is right; the inconsistent stems are noise.</figcaption>
+  </figure>
+
+  <div class="col">
+    <p>The ordering rule that came out of this: a movement number wins when the filename ends in digits; otherwise a trailing letter orders the parts; and a part with neither sorts first — which is what correctly puts the overture ahead of act one in Mozart's <em>Magic Flute</em>.</p>
+    <p>One work was checked page-by-page rather than by numbers. Brahms's Violin Concerto has three movements but four files, which looked wrong until the pages were rendered: it is one continuous Carl Fischer edition (violin and piano, edited by Leopold Auer) cut into page ranges. File 1 opens with the title page and file 3 begins the <em>Adagio</em>, but the cuts are not movement boundaries. The parts are chunks, not movements — so the merged file's bookmarks are labelled with the part they came from rather than claiming to be movements.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="step">Step 3</span>The pages that appear twice</h2>
+    <p>Mozart's K. 537 gave the game away: the last page of part <code>mzk537_c</code> is the same page as the first of <code>mzk537d</code>. The archive repeats, at the top of each part, the page on which that part begins, so that every part opens as a self-contained score. Any naive merge inherits those duplicates.</p>
+    <p>So every join was compared before anything was joined — a small greyscale render of the last page of each part against the first page of the next, scored by mean absolute difference. These are scans, so two renders of the same page are near-identical but not bit-identical; the gap between “same page” and “next page” turned out to be wide enough to be unambiguous.</p>
+  </div>
+
+  <div class="evidence">
+    <div class="cap">work 1418 · Mozart, Piano Concerto no. 26</div>
+mzk537a  last | mzk537b  first   diff = 36.66   ok<br>
+mzk537b  last | mzk537_c first   diff = 42.03   ok<br>
+mzk537_c last | mzk537d  first   diff =  <strong>0.00</strong>   OVERLAP<br>
+mzk537d  last | mzk537_e first   diff = 41.35   ok<br>
+mzk537_e last | mzk537_f first   diff = 34.93   ok
+  </div>
+
+  <div class="col">
+    <p>Genuine seams scored 25–45. Duplicates scored 0.00, with one exception: the Goldberg Variations seam scored 3.11, close enough to the threshold to need looking at. Rendered side by side, <code>gb_var1</code> page 3 and <code>gb_var2</code> page 1 are plainly the same page — both end with <em>Var. 2, Allegretto</em> beginning — and the 3.11 is scan noise. A threshold of 6.0 separates the two populations cleanly.</p>
+    <p>Ten repeated pages were found and dropped. Six of them were in the Christmas Oratorio alone.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="step">Step 4</span>Merging, ingesting, and a setback</h2>
+    <p>Each work was joined in playing order, skipping the repeated leading pages, with an outline entry per part so the merged file is navigable. The fifteen files went into <code>Z:\Books\SheetMusicIngest</code> and through <code>sms ingest --apply</code> — the drop folder built earlier this session, which catalogues what it finds, files it into the library and empties itself.</p>
+  </div>
+
+  <div class="note">
+    <p><strong>Then the ingest split them all back up again.</strong> Fifteen files arrived as 118 pieces. The generic adapter reads a PDF's outline as piece boundaries, so the very bookmarks that made the merged files navigable were read as evidence that each file held many pieces — and it filed them under <code>_Books/</code> as multi-piece volumes.</p>
+    <p>The bookmarks are worth keeping, so the fix went the other way: collapse each file back to a single piece spanning all its pages, and attach it to the work that already existed rather than creating a new one. Attaching to the existing work preserves its composer, catalogue number and any IMSLP or MusicBrainz link already established. Re-filing then moved each file out of <code>_Books/</code> and into <code>Composer/Title/</code>, where it belongs.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="step">Step 5</span>Retiring the split versions</h2>
+    <p>Three things happened to each of the 118 parts: its catalogue entry was deleted, its copy in the library was removed, and a tombstone recorded its page range so that a re-scan of the archive cannot quietly bring the split version back.</p>
+  </div>
+
+  <div class="keep">
+    <p><strong>Nothing under <code>Z:\Books\Music</code> was touched.</strong> Those scans are the only copy that exists and the merged files were built from them. Only the library copies under <code>Z:\Books\SheetMusic</code> — which can be rebuilt from the originals at any time — were removed.</p>
+  </div>
+</section>
+
+<section>
+  <div class="col">
+    <h2><span class="step">Result</span>The fifteen works</h2>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Work</th>
+          <th>Composer &amp; title</th>
+          <th class="num">Parts</th>
+          <th class="num">Pages</th>
+          <th class="num">Repeated</th>
+          <th class="num">Merged</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">791</td><td>Liszt · Piano Concerto no. 1</td><td class="num">8</td><td class="num">81</td><td class="num zero">—</td><td class="num">81</td></tr>
+        <tr><td class="num">796</td><td>Liszt · Piano Concerto no. 2</td><td class="num">10</td><td class="num">76</td><td class="num zero">—</td><td class="num">76</td></tr>
+        <tr><td class="num">891</td><td>Mozart · The Magic Flute</td><td class="num">6</td><td class="num">38</td><td class="num drop">1</td><td class="num">37</td></tr>
+        <tr><td class="num">1416</td><td>Grieg · Concerto in A minor</td><td class="num">3</td><td class="num">49</td><td class="num zero">—</td><td class="num">49</td></tr>
+        <tr><td class="num">1417</td><td>Handel · Suite in D</td><td class="num">6</td><td class="num">17</td><td class="num zero">—</td><td class="num">17</td></tr>
+        <tr><td class="num">1418</td><td>Mozart · Piano Concerto no. 26</td><td class="num">6</td><td class="num">57</td><td class="num drop">1</td><td class="num">56</td></tr>
+        <tr><td class="num">1419</td><td>Franck · Prelude, Choral and Fugue</td><td class="num">3</td><td class="num">27</td><td class="num drop">1</td><td class="num">26</td></tr>
+        <tr><td class="num">1420</td><td>Bach · Christmas Oratorio</td><td class="num">14</td><td class="num">169</td><td class="num drop">6</td><td class="num">163</td></tr>
+        <tr><td class="num">1421</td><td>Brahms · Violin Concerto</td><td class="num">4</td><td class="num">38</td><td class="num zero">—</td><td class="num">38</td></tr>
+        <tr><td class="num">1422</td><td>Debussy · Children's Corner</td><td class="num">6</td><td class="num">28</td><td class="num zero">—</td><td class="num">28</td></tr>
+        <tr><td class="num">1423</td><td>Schumann · Davidsbündlertänze</td><td class="num">11</td><td class="num">33</td><td class="num zero">—</td><td class="num">33</td></tr>
+        <tr><td class="num">1424</td><td>Bach · Goldberg Variations</td><td class="num">27</td><td class="num">49</td><td class="num drop">1</td><td class="num">48</td></tr>
+        <tr><td class="num">1425</td><td>Brahms · Paganini Variations</td><td class="num">2</td><td class="num">32</td><td class="num zero">—</td><td class="num">32</td></tr>
+        <tr><td class="num">1426</td><td>Schumann · Fantasy in C</td><td class="num">4</td><td class="num">45</td><td class="num zero">—</td><td class="num">45</td></tr>
+        <tr><td class="num">1427</td><td>Schumann · Kreisleriana</td><td class="num">8</td><td class="num">49</td><td class="num zero">—</td><td class="num">49</td></tr>
+        <tr class="total"><td></td><td>15 works</td><td class="num">118</td><td class="num">788</td><td class="num drop">10</td><td class="num">778</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <h3>Checked afterwards, through the app</h3>
+    <p>The merged Grieg was read back through the running server rather than trusted from the merge log: page 1 is the title page and <em>Allegro molto moderato</em>, page 20 closes the first movement, and page 21 opens the <em>Adagio</em> — the seam falls exactly on the movement boundary.</p>
+  </div>
+</section>
+
+<section class="col">
+  <h2><span class="step">Open</span>Tchaikovsky's first concerto</h2>
+  <p>One work was left split. Work 1161 holds eleven files in three overlapping series — <code>tchpc1a1</code> to <code>tchpc1a6</code>, <code>tchpc1b1</code>, <code>tchpc1b2</code>, and <code>tchpc1c1</code> to <code>tchpc1c3</code> — so “movement 1” names three different files and there is no single order to put them in. Whether the b and c series are a second edition, a continuation or something else cannot be told from the filenames.</p>
+  <p>It is left exactly as it was rather than guessed at. Deciding what a, b and c are is the only thing needed to finish it.</p>
+</section>
+
+<section class="col">
+  <h2><span class="step">Caveats</span>Three things worth knowing</h2>
+
+  <h3>File deletion is not covered by the transaction</h3>
+  <p>The first retirement run hit a Windows file lock — the running server still had a PDF open — and the database transaction rolled back cleanly. The <code>unlink</code> calls did not: nine parts processed before the lock (Franck's three and Debussy's six, alphabetically ahead of Grieg) stayed deleted on disk while their rows came back. The second run therefore reported 109 copies removed rather than 118. The end state is correct — all 118 are gone and none were left behind, verified by scanning the library for every split filename stem — but the two numbers not matching is this, not a missed file.</p>
+
+  <h3>99 empty work records were deleted</h3>
+  <p>Regrouping the split folders earlier had orphaned a lot of work rows: when 27 Goldberg entries became one work, 26 were left with no pieces. Those were cleaned up. Two of them still carried IMSLP links and composition years, which were lost — and recovered by re-running enrichment, which finished slightly ahead of where it started: <strong>75 IMSLP and 58 MusicBrainz links</strong>, against 75 and 57 before.</p>
+
+  <h3>The library is now the only thing that has to be mounted</h3>
+  <p>This repair ran after the library was made authoritative earlier in the session, so the merges read from the library copies rather than the originals, and the merged files were filed straight back into it.</p>
+</section>
+
+<section class="col">
+  <h2><span class="step">Method</span>None of this is in the app</h2>
+  <p>Every part of this ran as one-off scripts held outside the source tree, and the application code is unchanged by it. Which folders hold a single work is a judgement about the music — that Grieg's <code>con_amin</code> is one concerto while Chopin's <code>preludes</code> is twenty-four separate preludes, when both are “one filename stem plus a number” — and it is not something an adapter can be taught. Building it in would have meant the rule running unsupervised on collections nobody had looked at.</p>
+  <p>The scripts, in the order they were used:</p>
+  <ul class="plain">
+    <li><span class="mono">merge_tool.py</span> — classifies multi-file works and puts the parts in order</li>
+    <li><span class="mono">headers.py</span> — renders the printed page numbers for checking continuity</li>
+    <li><span class="mono">contact.py</span> — tiles the first page of each part into one strip to look at</li>
+    <li><span class="mono">seams.py</span> — compares every join for repeated pages</li>
+    <li><span class="mono">do_merge.py</span> — writes the merged PDFs into the drop folder</li>
+    <li><span class="mono">adopt_merged.py</span> — collapses each merged file to one piece on the existing work</li>
+    <li><span class="mono">retire_splits.py</span> — deletes the split entries, their library copies, and tombstones the ranges</li>
+  </ul>
+  <p>The test suite was run at the end and passes at 256 tests, unchanged in count, because nothing in the application was touched.</p>
+</section>
+
+<footer>
+  <p>Catalogue after the repair: 1,825 pieces across four collections — Mozart (85), Sheet Music Archive (1,248), pop collection (477) and Ingest (15) — in 1,330 works by 306 composers. Library 1,825 files, 876 MB.</p>
+  <p>Recorded in <span class="mono">TODO.md</span> item 19. Commit <span class="mono">3fc09dc</span>.</p>
+</footer>
+
+</div>

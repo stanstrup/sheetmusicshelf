@@ -1,0 +1,395 @@
+<title>Sheet Music Shelf Handbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #F2F3F1; --card: #FBFBFA; --ink: #16181A; --ink-soft: #5C6360;
+    --ink-faint: #868C88; --accent: #1F4E5F; --accent-soft: #E3ECEE;
+    --warn: #8C4A2F; --warn-soft: #F4E9E3; --rule: #D7DAD6; --rule-soft: #E7E9E6;
+    --serif: "Spectral", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141614; --card: #1C1F1D; --ink: #E8EAE6; --ink-soft: #A3AAA5;
+      --ink-faint: #7C837E; --accent: #6FB3C4; --accent-soft: #1B2E34;
+      --warn: #D08A66; --warn-soft: #2E211A; --rule: #2E332F; --rule-soft: #232724;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141614; --card: #1C1F1D; --ink: #E8EAE6; --ink-soft: #A3AAA5;
+    --ink-faint: #7C837E; --accent: #6FB3C4; --accent-soft: #1B2E34;
+    --warn: #D08A66; --warn-soft: #2E211A; --rule: #2E332F; --rule-soft: #232724;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.62; margin: 0; padding: 0 20px 96px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  .col { max-width: 68ch; }
+
+  header.top { padding: 60px 0 28px; border-bottom: 2px solid var(--ink); margin-bottom: 34px; }
+  .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .13em;
+             text-transform: uppercase; color: var(--accent); margin: 0 0 14px; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(34px,5.4vw,52px);
+       line-height: 1.08; letter-spacing: -.015em; margin: 0 0 16px; text-wrap: balance; }
+  .standfirst { font-family: var(--serif); font-size: clamp(17px,2.2vw,20px); line-height: 1.5;
+                color: var(--ink-soft); max-width: 60ch; margin: 0; }
+
+  nav.toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+            gap: 2px 24px; margin: 0 0 56px; }
+  nav.toc a { display: block; padding: 7px 0; font-size: 14px; text-decoration: none;
+              color: var(--ink-soft); border-bottom: 1px solid var(--rule-soft); }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a span { font-family: var(--mono); font-size: 11px; color: var(--ink-faint);
+                   margin-right: 9px; }
+
+  section { margin: 0 0 54px; scroll-margin-top: 20px; }
+  h2 { font-family: var(--serif); font-size: 26px; font-weight: 600; letter-spacing: -.01em;
+       margin: 0 0 14px; padding-top: 6px; border-top: 1px solid var(--rule); text-wrap: balance; }
+  h2 .num { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .08em;
+            color: var(--accent); display: block; margin-bottom: 8px; padding-top: 8px; }
+  h3 { font-family: var(--sans); font-size: 15.5px; font-weight: 600; margin: 30px 0 7px; }
+  h4 { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em;
+       text-transform: uppercase; color: var(--ink-faint); margin: 24px 0 6px; }
+  p { margin: 0 0 15px; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: .875em; background: var(--rule-soft);
+         padding: 1px 5px; border-radius: 3px; }
+  pre { font-family: var(--mono); font-size: 12.5px; line-height: 1.7; background: var(--card);
+        border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+        padding: 15px 17px; overflow-x: auto; margin: 20px 0; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  ul, ol { margin: 0 0 15px; padding-left: 21px; }
+  li { margin-bottom: 7px; }
+
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 22px 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 40px; margin-bottom: 20px; }
+  .steps > li::before {
+    content: counter(s); position: absolute; left: 0; top: 1px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    width: 24px; height: 24px; line-height: 24px; text-align: center;
+    border: 1px solid var(--accent); border-radius: 50%; color: var(--accent);
+  }
+  .steps > li p { margin-bottom: 8px; }
+  .steps > li pre { margin: 10px 0; }
+
+  .note { border-left: 3px solid var(--warn); background: var(--warn-soft);
+          padding: 14px 17px; margin: 22px 0; font-size: 14.5px; }
+  .note p:last-child { margin-bottom: 0; }
+  .note strong { font-weight: 600; }
+
+  .tablewrap { overflow-x: auto; margin: 20px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em;
+       text-transform: uppercase; font-weight: 500; color: var(--ink-faint);
+       padding: 0 14px 8px 0; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+  td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  td.mono, th.mono { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+
+  dl.actions { display: grid; grid-template-columns: max-content 1fr; gap: 12px 20px;
+               margin: 20px 0; align-items: baseline; }
+  dl.actions dt { font-weight: 600; font-size: 14.5px; white-space: nowrap; }
+  dl.actions dd { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+
+  .routes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 0;
+            border: 1px solid var(--rule); margin: 22px 0; background: var(--card); }
+  .routes > div { padding: 15px 17px; border-right: 1px solid var(--rule); }
+  .routes > div:last-child { border-right: 0; }
+  .routes .band { font-family: var(--mono); font-size: 19px; font-weight: 500;
+                  font-variant-numeric: tabular-nums; display: block; }
+  .routes .name { font-weight: 600; font-size: 14px; display: block; margin: 5px 0 4px; }
+  .routes .what { font-size: 13.5px; color: var(--ink-soft); }
+  .routes .accept .band { color: var(--accent); }
+  .routes .hold .band { color: var(--warn); }
+
+  footer { border-top: 1px solid var(--rule); margin-top: 56px; padding-top: 20px;
+           font-size: 13px; color: var(--ink-faint); }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Sheet Music Shelf · handbook for running it</p>
+  <h1>Sheet Music Shelf Handbook</h1>
+  <p class="standfirst">A self-hosted catalogue for sheet music: it reads your PDFs, guesses what each one is, tells you how sure it is, and hands the uncertain ones to you.</p>
+</header>
+
+<nav class="toc">
+  <a href="#what"><span>01</span>What it is</a>
+  <a href="#running"><span>02</span>Getting it running</a>
+  <a href="#getting-music-in"><span>03</span>Getting music in</a>
+  <a href="#library"><span>04</span>How the library is arranged</a>
+  <a href="#browsing"><span>05</span>Browsing and filtering</a>
+  <a href="#review"><span>06</span>The review queue</a>
+  <a href="#reading"><span>07</span>Reading and annotating</a>
+  <a href="#shelves"><span>08</span>Shelves and personal notes</a>
+  <a href="#books"><span>09</span>Books holding many pieces</a>
+  <a href="#enrichment"><span>10</span>Composers, dates and links</a>
+  <a href="#api"><span>11</span>The API, for agents</a>
+  <a href="#cli"><span>12</span>Command reference</a>
+  <a href="#gotchas"><span>13</span>Things that will catch you out</a>
+</nav>
+
+<section id="what" class="col">
+  <h2><span class="num">01</span>What it is</h2>
+  <p>Sheet Music Shelf catalogues a pile of PDFs into something you can search by composer, form, instrument and key, and open on a phone on the sofa. Think Calibre-web or Audiobookshelf, but for scores.</p>
+  <p>Three ideas shape everything else:</p>
+  <ul>
+    <li><strong>A file is not a catalogue entry.</strong> One PDF can hold sixty pieces; one piece can span several PDFs. The thing you browse is a <em>piece</em> — a page range inside a file — and pieces that are the same music are grouped into a <em>work</em>.</li>
+    <li><strong>Every guess carries a confidence.</strong> Nothing is asserted as fact because a filename looked promising. Confident guesses are filed; unsure ones wait for you in a review queue.</li>
+    <li><strong>Your decision is permanent.</strong> Once you accept a value, no later scan, signal or enrichment run can argue it down.</li>
+  </ul>
+  <p>There is no machine-learning model inside the service and no call to a language model at catalogue time. Everything is deterministic scoring over signals that can be pointed at. External tools can curate through the API, but nothing hidden is happening on your NAS.</p>
+</section>
+
+<section id="running">
+  <div class="col">
+    <h2><span class="num">02</span>Getting it running</h2>
+    <p>Three containers: the web app, a worker that does scanning in the background, and PostgreSQL. The compose file lives at <code>Z:\docker\compose\sheetmusicshelf.yml</code>, with its build context in <code>Z:\docker\build\sheetmusicshelf</code>.</p>
+  </div>
+
+  <ol class="steps col">
+    <li>
+      <p><strong>Fill in the secrets.</strong> Edit <code>Z:\docker\compose\.sheetmusicshelf.env</code>:</p>
+      <pre><code>SMS_SECRET_KEY=&lt;long random string&gt;
+SMS_OIDC_CLIENT_ID=&lt;from authentik&gt;
+SMS_OIDC_CLIENT_SECRET=&lt;from authentik&gt;
+SMS_CONTACT=you@example.com</code></pre>
+      <p>Generate the key with <code>python -c "import secrets; print(secrets.token_urlsafe(48))"</code>. Set the database password in <code>.sheetmusicshelf-db.env</code> to match.</p>
+    </li>
+    <li>
+      <p><strong>Create the authentik application</strong> — an OIDC provider plus an application, with the redirect URI pointing at your base URL. Copy the client id and secret into the env file.</p>
+    </li>
+    <li>
+      <p><strong>Start it.</strong></p>
+      <pre><code>cd /mnt/z/docker/compose
+docker compose -f sheetmusicshelf.yml up -d --build</code></pre>
+      <p>The app is on port <code>8014</code>. Schema migrations run automatically at start.</p>
+    </li>
+  </ol>
+
+  <div class="note col">
+    <p><strong><code>SMS_CONTACT</code> has no default and nothing works without it.</strong> MusicBrainz and IMSLP require a reachable contact — an email address or a project URL — in the User-Agent of every request, and block clients that omit one. Rather than send a fake one, the app refuses to make any outbound lookup at all until you set it. Cataloguing, browsing and reading work fine without it; only the enrichment features stop.</p>
+  </div>
+
+  <div class="col">
+    <h3>What gets mounted</h3>
+    <p>Only two paths on the NAS, which is the whole point of the design:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Host</th><th>In the container</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">Z:\Books\SheetMusic</td><td class="mono">/library/managed</td><td>The library. Every catalogued file lives here.</td></tr>
+          <tr><td class="mono">Z:\Books\SheetMusicIngest</td><td class="mono">/library/ingest</td><td>The drop folder. Files here are imported and removed.</td></tr>
+          <tr><td class="mono">named volume</td><td class="mono">/cache</td><td>Rendered pages and extracted text — thousands of small files, so not on the SMB share.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Your original music folder is <em>not</em> mounted. Once material is in the library, where it came from stops mattering.</p>
+  </div>
+</section>
+
+<section id="getting-music-in">
+  <div class="col">
+    <h2><span class="num">03</span>Getting music in</h2>
+    <p>Two routes in, for two different situations.</p>
+
+    <h3>The drop folder, for a handful of files</h3>
+    <p>Put PDFs into <code>Z:\Books\SheetMusicIngest</code> and run:</p>
+    <pre><code>sms ingest              # shows what it would do
+sms ingest --apply      # catalogues, files, and empties the folder</code></pre>
+    <p>Each file is read, catalogued, copied into the library under a composer-and-title folder, and then deleted from the drop folder — the same way Calibre empties its auto-add directory. Nothing is deleted until the library holds a copy of the same size, and <code>--keep</code> skips the removal if you would rather tidy up yourself.</p>
+
+    <h3>A collection, for a whole set at once</h3>
+    <p>A <em>collection</em> is a directory of music that shares a naming convention — a CD-ROM rip, a downloaded archive. Registering one lets a purpose-built adapter read the convention instead of guessing:</p>
+    <pre><code>sms collection add "The Sheet Music Archive" /path/to/archive
+sms collection scan 2
+sms collection materialise 2 --apply</code></pre>
+    <p><code>scan</code> reads and catalogues; <code>materialise</code> copies the files into the library. Originals are copied, never moved or modified.</p>
+
+    <h4>Adapters</h4>
+    <p>An adapter knows one collection's conventions. Four ship with the app — for the CD Sheet Music discs, the Sheet Music Archive, a filename-based pop collection, and a generic fallback that reads PDF metadata and outlines. <code>sms adapters</code> lists them; the right one is detected automatically when you scan.</p>
+  </div>
+</section>
+
+<section id="library">
+  <div class="col">
+    <h2><span class="num">04</span>How the library is arranged</h2>
+    <p>Calibre-style, and readable without the app running:</p>
+    <pre><code>Z:\Books\SheetMusic\
+  Wolfgang Amadeus Mozart\
+    Fantasia in F Minor (K. 608)\moz2.pdf
+    Minuet in D Major (K. 355-576b)\k0355.pdf
+  Edvard Grieg\
+    Concerto in A minor\Edvard Grieg - Concerto in A minor.pdf
+  _Books\
+    CD Sheet Music Mozart\works\mozvol2.pdf</code></pre>
+    <p>A folder name is built from metadata, so <strong>correcting a piece in review moves its file</strong> to match, and the folder it emptied is cleaned up. You will see files relocate as you review — that is working as intended, not a bug.</p>
+    <p><code>_Books\</code> holds volumes containing many pieces. A 378-page anthology cannot sit inside one work's folder without misrepresenting itself, so it keeps its original relative path.</p>
+  </div>
+</section>
+
+<section id="browsing">
+  <div class="col">
+    <h2><span class="num">05</span>Browsing and filtering</h2>
+    <p>The front page is the catalogue, with facets down the side: composer, form, instrument, key, period, collection and review state. Filters combine, and the counts update with them.</p>
+    <p>Each card previews the piece's <em>own</em> first page — not the file's — so a piece buried on page 212 of an anthology still shows the right thing.</p>
+    <p>A composer page collects everything by them, with a portrait and dates pulled from Wikidata. A work page shows every copy you hold, links out to IMSLP and MusicBrainz, and lists movements in order when the work is one file per movement.</p>
+  </div>
+</section>
+
+<section id="review">
+  <div class="col">
+    <h2><span class="num">06</span>The review queue</h2>
+    <p>After a scan, every piece has a confidence between 0 and 1 and sits in one of three bands:</p>
+  </div>
+
+  <div class="routes">
+    <div class="accept">
+      <span class="band">≥ 0.80</span>
+      <span class="name">Accepted</span>
+      <span class="what">Filed without asking. Signals agreed and were strong.</span>
+    </div>
+    <div>
+      <span class="band">0.50–0.79</span>
+      <span class="name">Needs review</span>
+      <span class="what">A plausible reading that wants a human glance.</span>
+    </div>
+    <div class="hold">
+      <span class="band">&lt; 0.50</span>
+      <span class="name">Held</span>
+      <span class="what">Too little to go on, or signals that contradict each other.</span>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>Signals that <em>disagree</em> cap confidence at 0.45 regardless of how strong they are, so a conflict always reaches you rather than being averaged away. The thresholds are per-collection, so a messy folder can be made stricter than a well-organised one.</p>
+    <p><code>/review</code> shows the least confident piece first — worst guesses first, because that is where your attention changes the most. The <strong>←</strong> and <strong>→</strong> arrows (or the arrow keys) move through the queue without deciding anything, which is how you skip past one you cannot judge yet.</p>
+
+    <h3>The four actions</h3>
+    <dl class="actions">
+      <dt>Accept</dt>
+      <dd>Records your values as decisions. No later signal can outvote them and a re-scan will not disturb them. The piece leaves the queue.</dd>
+      <dt>Skip</dt>
+      <dd>Changes nothing. The piece stays in the queue and comes round again, behind the rest.</dd>
+      <dt>Not music</dt>
+      <dd>For a cover page, a licence, a scan of something that is not a score. Set aside and excluded from the catalogue, but kept so you can find it again.</dd>
+      <dt>Delete</dt>
+      <dd>Removes the entry for good and remembers the page range, so a re-scan cannot recreate it.</dd>
+    </dl>
+    <p>In every case <strong>the PDF itself is untouched.</strong> "Delete" removes a catalogue entry, not a file.</p>
+  </div>
+</section>
+
+<section id="reading" class="col">
+  <h2><span class="num">07</span>Reading and annotating</h2>
+  <p>Pages are rendered to WebP on the server at four widths — 320, 800, 1200 and 1800 — and cached by content hash, so a re-scan of an unchanged file reuses them and an edited file gets fresh ones automatically. Most of this library has no text layer, so server-side rendering is the only thing that works everywhere.</p>
+  <p>The reader opens at the piece's first page, not the file's. On a phone it fetches pages as you need them rather than pulling a 50 MB scan before showing anything.</p>
+  <p>Annotations are stored per page in normalised 0–1 coordinates, so a mark made on a phone lands in the right place on a tablet. A screen-wake helper keeps the display on while you are playing.</p>
+  <div class="note">
+    <p><strong>This is a networked application.</strong> Offline use was ruled out by design — it assumes you are on the LAN or a VPN. There is no local cache of scores on the device.</p>
+  </div>
+</section>
+
+<section id="shelves" class="col">
+  <h2><span class="num">08</span>Shelves and personal notes</h2>
+  <p>Shelves are hand-made collections in the Calibre sense: "Christmas", "learning now", "for the recital". A piece can sit on any number of them, and a shelf keeps its own order so you can sequence a programme.</p>
+  <p>Separately, each piece carries a small fixed set of personal fields — difficulty, status, rating, free notes and tags. These are yours and are never touched by scanning or enrichment.</p>
+</section>
+
+<section id="books" class="col">
+  <h2><span class="num">09</span>Books holding many pieces</h2>
+  <p>When one PDF holds an anthology, the adapter tries to find the individual pieces from the outline, the table of contents, or embedded metadata. When it gets the boundaries wrong, <code>/split/&lt;file id&gt;</code> is a page-range editor: adjust where each piece starts and ends, add one that was missed, remove one that is not really there.</p>
+  <p>Ranges you delete are remembered, so a later re-scan will not recreate an entry you already rejected.</p>
+</section>
+
+<section id="enrichment" class="col">
+  <h2><span class="num">10</span>Composers, dates and links</h2>
+  <p>Three enrichment passes, all optional and all requiring <code>SMS_CONTACT</code>:</p>
+  <pre><code>sms composer enrich     # portrait, dates and period from Wikidata
+sms work enrich         # IMSLP and MusicBrainz links, matched on catalogue number
+sms work years          # composition year, read from the IMSLP page already linked</code></pre>
+  <p>Links are only attempted for works with an accepted copy, so a guess never comes back wearing a citation. Where the automatic match is wrong or missing, the work page has a search box: pick the right result by hand and it is marked confirmed, after which automatic runs leave it alone.</p>
+  <p>Matching handles the awkward cases — MusicBrainz files Mozart's first sonata as "K. 189d/279" and IMSLP as "K.283/189h", and either half of a compound citation counts.</p>
+  <p>Every outbound request passes through a rate gate with a circuit breaker: roughly one MusicBrainz request per 1.2 seconds, and if the service starts refusing, the app stands down instead of hammering it. Enrichment is slow on purpose.</p>
+</section>
+
+<section id="api" class="col">
+  <h2><span class="num">11</span>The API, for agents</h2>
+  <p>External tools curating the catalogue are a first-class client, not a workaround — the API exists so a language model running <em>outside</em> the service can do the tedious identification work that the app deliberately does not.</p>
+  <pre><code>sms token create "curation bot" --scope curate</code></pre>
+  <p>The plaintext token is shown once and never stored. Present it as a bearer token against <code>/api/v1</code>:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="mono">Endpoint</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">GET /pieces</td><td>Search and filter the catalogue</td></tr>
+        <tr><td class="mono">GET /facets</td><td>Available filter values with counts</td></tr>
+        <tr><td class="mono">GET /curation/summary</td><td>What still needs attention</td></tr>
+        <tr><td class="mono">GET /curation/pieces/{id}</td><td>Everything known about one piece, with every signal</td></tr>
+        <tr><td class="mono">POST /curation/pieces/{id}/approve</td><td>Record values as decisions</td></tr>
+        <tr><td class="mono">POST /curation/pieces/{id}/reject</td><td>Set a piece aside</td></tr>
+        <tr><td class="mono">GET /pieces/{id}/pages/{n}</td><td>A rendered page, for a model that can see</td></tr>
+        <tr><td class="mono">PUT /pieces/{id}/annotations/{n}</td><td>Replace one page's marks</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>An agent can also <em>add</em> a candidate rather than a decision — an opinion with a weight, which the scorer then weighs against everything else. That is usually the more honest thing for a machine to do.</p>
+  <p>Interactive documentation is at <code>/docs</code> when <code>SMS_DEBUG</code> is on.</p>
+</section>
+
+<section id="cli" class="col">
+  <h2><span class="num">12</span>Command reference</h2>
+  <p>Run inside the container, or locally with the environment set.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="mono">Command</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">sms ingest [--apply]</td><td>Import the drop folder; dry run without <code>--apply</code></td></tr>
+        <tr><td class="mono">sms collection add NAME PATH</td><td>Register a collection</td></tr>
+        <tr><td class="mono">sms collection list</td><td>Collections with their ids and adapters</td></tr>
+        <tr><td class="mono">sms collection scan ID</td><td>Read and catalogue, in the foreground</td></tr>
+        <tr><td class="mono">sms collection materialise ID [--apply]</td><td>Copy into the library</td></tr>
+        <tr><td class="mono">sms collection recompute ID</td><td>Re-resolve from stored signals, without re-reading files</td></tr>
+        <tr><td class="mono">sms report</td><td>Where the catalogue stands</td></tr>
+        <tr><td class="mono">sms adapters</td><td>Registered adapters</td></tr>
+        <tr><td class="mono">sms work link</td><td>Group pieces into works</td></tr>
+        <tr><td class="mono">sms work enrich</td><td>IMSLP and MusicBrainz links</td></tr>
+        <tr><td class="mono">sms work years</td><td>Composition years</td></tr>
+        <tr><td class="mono">sms composer sync / enrich</td><td>Composer records and portraits</td></tr>
+        <tr><td class="mono">sms token create / list / revoke</td><td>API credentials</td></tr>
+        <tr><td class="mono">sms db upgrade</td><td>Apply migrations</td></tr>
+        <tr><td class="mono">sms worker</td><td>Run the background worker</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><code>--apply</code> is never the default on anything that writes. The first thing worth seeing is always the plan.</p>
+</section>
+
+<section id="gotchas" class="col">
+  <h2><span class="num">13</span>Things that will catch you out</h2>
+
+  <h3>Review one collection at a time</h3>
+  <p>A thousand pieces in one queue is not reviewable. Filter the queue by collection and finish one before starting the next.</p>
+
+  <h3>Files move when you correct them</h3>
+  <p>Folder names come from metadata. Accepting a corrected title relocates the file and prunes the empty folder. Do not keep external links straight into the library tree.</p>
+
+  <h3>The worker yields to the rest of the machine</h3>
+  <p><code>SMS_LOAD_CEILING</code> pauses scanning between files while the one-minute load average is above it. On a small box running dozens of containers, a scan that ignores load is not a slow scan — it is an outage for everything else.</p>
+
+  <h3>Scanning over SMB is slow because of hashing</h3>
+  <p><code>--no-hash</code> skips SHA-256 and is much faster, at the cost of the app not noticing that a file changed underneath it.</p>
+
+  <h3>A "book" is decided by piece count</h3>
+  <p>A file with more than one piece is filed under <code>_Books\</code>. If a merged or multi-movement file lands there unexpectedly, it is because something split it into several pieces — fix the pieces and re-run <code>materialise</code>, and it will move.</p>
+
+  <h3>Deleting is about the catalogue, not the disk</h3>
+  <p>Nothing in the app deletes a source PDF. The strongest thing a delete does is remove the library copy, which <code>materialise</code> can rebuild.</p>
+</section>
+
+<footer>
+  <p>Sheet Music Shelf · FastAPI, PostgreSQL 16, server-rendered HTML · documentation current as of 3 September 2026.</p>
+</footer>
+
+</div>
