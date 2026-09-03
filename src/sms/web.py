@@ -337,6 +337,18 @@ REVIEW_FIELDS = (
 )
 
 
+def _resolved_values(session: Session, piece: Piece) -> dict[str, str]:
+    """What the form was pre-filled with, so a reviewer's edits can be told
+    apart from the values they simply left alone."""
+    from .ingest.persist import DENORMALISED
+
+    values: dict[str, str] = {}
+    for field, column in DENORMALISED.items():
+        current = getattr(piece, column, None)
+        if current is not None:
+            values[field] = str(current)
+    return values
+
 def _review_queue(session: Session, collection_id: int | None, route: str | None):
     """The pending queue, least confident first.
 
@@ -459,20 +471,25 @@ async def review_submit(
     if action == "reject":
         piece.review_state = "rejected"
     elif action == "accept":
+        # Only what the reviewer actually changed becomes a decision.  The form
+        # arrives pre-filled, so accepting every non-empty field would record
+        # values nobody examined as permanent human judgements -- and a
+        # decision cannot be argued down by a later, better adapter.
+        current = _resolved_values(session, piece)
         for name, _label in REVIEW_FIELDS:
             value = (form.get(name) or "").strip()
-            if value:
+            if value and value != (current.get(name) or ""):
                 accept_value(
                     session, piece, name, value,
                     user_id=viewer.user_id, source=f"human:{viewer.display_name}",
                 )
+        piece.review_state = "accepted"
         source_collection = piece.source_file.collection
         recompute(
             session, piece,
             auto_accept=source_collection.auto_accept,
             review_floor=source_collection.review_floor,
         )
-        piece.review_state = "accepted"
     else:
         # Skipped: leave it pending but push it behind the rest for now.
         piece.confidence = min(piece.confidence + 0.0001, 0.9999)

@@ -330,3 +330,75 @@ class TestRetraction:
         values = {c.value for c in session.scalars(select(FieldCandidate).where(
             FieldCandidate.piece_id == piece.id, FieldCandidate.field == "title"))}
         assert values == {"From The Adapter", "From Another"}
+
+
+class TestReviewSettlesAPiece:
+    def test_a_reviewed_piece_is_accepted_whatever_the_signals_say(
+        self, session, collection, source_file
+    ):
+        """Reviewing is its own fact, separate from deciding each field.
+
+        The route used to come only from confidence, so the only way out of
+        the queue was to accept field after field until the number rose --
+        which turned every pre-filled machine guess into a permanent decision.
+        """
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+        ))
+        piece = only_piece(session, source_file)
+        assert piece.route == "review"
+
+        piece.review_state = "accepted"
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+
+        assert piece.route == "accept"
+        assert any("by hand" in note for note in piece.notes_machine)
+
+    def test_a_rescan_does_not_return_it_to_the_queue(self, session, collection, source_file):
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+        ))
+        piece = only_piece(session, source_file)
+        piece.review_state = "accepted"
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+        ))
+        session.flush()
+        assert only_piece(session, source_file).route == "accept"
+
+    def test_an_untouched_field_stays_a_machine_reading(self, session, collection, source_file):
+        """The point of the change: a reviewer who corrects the title has not
+        thereby pronounced on the key, and a fixed adapter can still improve it."""
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+            ("key", "C major", "filename", 0.5),
+        ))
+        piece = only_piece(session, source_file)
+        accept_value(session, piece, "title", "Concerto in A minor", source="human:test")
+        piece.review_state = "accepted"
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+
+        # A corrected adapter now reads the key differently, and may say so.
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+            ("key", "A minor", "filename", 0.5),
+        ))
+        session.flush()
+        piece = only_piece(session, source_file)
+        assert piece.music_key == "A minor"
+        assert piece.title == "Concerto in A minor"

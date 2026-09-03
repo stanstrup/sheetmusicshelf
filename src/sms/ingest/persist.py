@@ -291,6 +291,17 @@ def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floo
 
     piece.confidence = confidence
     piece.route = route_for(piece.confidence, auto_accept=auto_accept, review_floor=review_floor)
+
+    # A person looking at the piece and accepting it settles it, whatever the
+    # signals add up to.  Without this the only way to get a piece out of the
+    # queue was to raise its confidence by accepting each field in turn, which
+    # turned every pre-filled machine guess on the form into a permanent human
+    # decision -- and spent, silently, the ability to re-run a fixed adapter.
+    if piece.review_state == "accepted":
+        piece.route = "accept"
+        notes.append("catalogued by hand")
+    elif piece.review_state == "rejected":
+        piece.route = "hold"
     # The adapter's observations survive every recompute; the scorer's are
     # re-derived each time.
     piece.notes_machine = list(piece.notes_ingest or []) + notes
