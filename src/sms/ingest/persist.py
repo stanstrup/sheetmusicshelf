@@ -15,7 +15,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Collection, FieldCandidate, Piece, SourceFile
+from ..models import Collection, FieldCandidate, Piece, RemovedRange, SourceFile
 from ..pdfsignals import FileSignals
 from .model import FileProposal
 from .scoring import resolve_field
@@ -84,11 +84,29 @@ def upsert_file(session: Session, collection: Collection, signals: FileSignals) 
     return row, changed
 
 
-def _piece_for(session: Session, file_row: SourceFile, page_start: int, page_end: int) -> Piece:
+def was_removed(session: Session, file_row: SourceFile, page_start: int, page_end: int) -> bool:
+    """Whether a person deleted this page range from the catalogue."""
+    return bool(
+        session.scalar(
+            select(RemovedRange.id).where(
+                RemovedRange.source_file_id == file_row.id,
+                RemovedRange.page_start == page_start,
+                RemovedRange.page_end == page_end,
+            ).limit(1)
+        )
+    )
+
+
+def _piece_for(
+    session: Session, file_row: SourceFile, page_start: int, page_end: int
+) -> Piece | None:
     """Find the piece covering this page range, or make one.
 
     Matching on the page range rather than on a title means a re-ingest that
     improves a title updates the existing entry instead of duplicating it.
+
+    Returns None for a range someone deleted: a re-scan must not undo a
+    decision a person made.
     """
     piece = session.scalar(
         select(Piece).where(
@@ -97,6 +115,8 @@ def _piece_for(session: Session, file_row: SourceFile, page_start: int, page_end
             Piece.page_end == page_end,
         )
     )
+    if piece is None and was_removed(session, file_row, page_start, page_end):
+        return None
     if piece is None:
         piece = Piece(source_file_id=file_row.id, page_start=page_start, page_end=page_end)
         session.add(piece)
@@ -227,6 +247,8 @@ def commit_proposal(
     touched: list[Piece] = []
     for proposed in proposal.pieces:
         piece = _piece_for(session, file_row, proposed.page_start, proposed.page_end)
+        if piece is None:
+            continue                       # deleted by hand; stays deleted
         piece.printed_first_page = proposed.printed_first_page
         piece.printed_last_page = proposed.printed_last_page
         piece.notes_ingest = list(proposed.notes)

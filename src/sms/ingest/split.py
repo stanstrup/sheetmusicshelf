@@ -121,7 +121,7 @@ def apply_splits(
     user_id: int | None = None,
 ) -> SplitResult:
     """Rewrite a file's pieces to match ``boundaries``."""
-    from .persist import accept_value, recompute
+    from .persist import accept_value, recompute, was_removed
 
     result = SplitResult()
     page_count = max(file_row.page_count, 1)
@@ -162,6 +162,8 @@ def apply_splits(
         page_end = max(page_end, boundary.page_start)
 
         piece = existing.get(boundary.page_start)
+        if piece is None and was_removed(session, file_row, boundary.page_start, page_end):
+            continue                   # deleted by hand; stays deleted
         if piece is None:
             piece = Piece(
                 source_file_id=file_row.id,

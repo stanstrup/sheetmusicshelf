@@ -19,7 +19,10 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import get_session
-from .models import Collection, Composer, FieldCandidate, Piece, Shelf, ShelfItem, SourceFile, Work
+from .models import (
+    Collection, Composer, FieldCandidate, Piece, RemovedRange, Shelf, ShelfItem,
+    SourceFile, Work,
+)
 
 log = logging.getLogger("sms.web")
 
@@ -259,6 +262,7 @@ def piece_detail(
         "piece.html",
         {
             "viewer": viewer, "piece": piece, "composer": composer, "work": work,
+            "review_link": f"/review?piece={piece.id}",
             "shelves": list(session.scalars(select(Shelf).order_by(Shelf.name))),
             "file": piece.source_file, "collection": piece.source_file.collection,
             "siblings": siblings, "editions": editions,
@@ -313,6 +317,7 @@ def read(
         "reader.html",
         {
             "viewer": viewer, "piece": piece,
+            "review_link": f"/review?piece={piece.id}",
             "pages": list(range(1, piece.page_count + 1)),
             "spread": bool(spread),
         },
@@ -351,9 +356,14 @@ def review(
     session: Session = Depends(get_session),
     collection: int | None = None,
     route: str = "",
+    piece: int | None = None,
 ) -> Response:
     viewer = _viewer(request, session)
-    item = _next_for_review(session, collection, route or None)
+    # Reviewing a specific piece beats the queue order: arriving here from a
+    # piece you are looking at should review *that* piece.
+    item = session.get(Piece, piece) if piece else None
+    if item is None:
+        item = _next_for_review(session, collection, route or None)
 
     outstanding_query = (
         select(func.count())
@@ -404,6 +414,8 @@ def review(
             "viewer": viewer, "item": item, "file": file_row, "fields": fields,
             "outstanding": outstanding, "route": route, "ambiguous_order": ambiguous,
             "notes": notes,
+            # True when a specific piece was asked for, rather than the queue.
+            "single": piece is not None,
             "collection": session.get(Collection, collection) if collection else None,
         },
     )
@@ -427,6 +439,7 @@ async def review_submit(
     action = form.get("action", "skip")
     route = form.get("next_route", "") or ""
     collection = form.get("collection")
+    return_to = (form.get("return_to") or "").strip()
 
     if action == "reject":
         piece.review_state = "rejected"
@@ -455,11 +468,141 @@ async def review_submit(
         piece.reviewed_by = viewer.user_id
         piece.reviewed_at = datetime.now(timezone.utc)
 
-    target = f"/review?route={route}"
-    if collection:
-        target += f"&collection={collection}"
+    # Reviewing one specific piece returns to it; working the queue moves on.
+    if return_to.startswith("/") and not return_to.startswith("//"):
+        target = return_to
+    else:
+        target = f"/review?route={route}"
+        if collection:
+            target += f"&collection={collection}"
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
+
+
+@router.post("/piece/{piece_id}/delete")
+async def piece_delete(
+    piece_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Remove a catalogue entry for good.
+
+    The PDF is not touched -- this is a decision about the catalogue. The page
+    range is remembered so the next scan does not quietly recreate the entry,
+    which is what would otherwise happen: the ingester matches pieces by page
+    range and makes whatever is missing.
+    """
+    viewer = _viewer(request, session)
+    piece = session.get(Piece, piece_id)
+    if piece is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
+
+    form = await request.form()
+    file_row = piece.source_file
+    collection_id = file_row.collection_id
+
+    session.add(
+        RemovedRange(
+            source_file_id=file_row.id,
+            page_start=piece.page_start,
+            page_end=piece.page_end,
+            removed_by=viewer.user_id,
+            reason=(form.get("reason") or "").strip() or None,
+        )
+    )
+    session.delete(piece)
+    session.flush()
+    return RedirectResponse(
+        f"/?collection={collection_id}", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+
+# --- works and canonical sources ------------------------------------------
+
+def catalogue_label(work: Work) -> str:
+    if not work.catalog_system or work.catalog_number is None:
+        return ""
+    label = f"{work.catalog_system}. {work.catalog_number}{work.catalog_suffix or ''}"
+    return f"{label} no. {work.catalog_sub}" if work.catalog_sub is not None else label
+
+
+@router.get("/work/{work_id}", response_class=HTMLResponse)
+def work_detail(
+    work_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+    q: str | None = None,
+) -> Response:
+    """One work, its canonical links, and a search for setting them by hand."""
+    viewer = _viewer(request, session)
+    work = session.get(Work, work_id)
+    if work is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
+
+    composer = session.get(Composer, work.composer_id) if work.composer_id else None
+    pieces = list(
+        session.scalars(select(Piece).where(Piece.work_id == work.id).order_by(Piece.id))
+    )
+
+    results = {"imslp": [], "musicbrainz": []}
+    error = ""
+    if q:
+        from .enrich.canonical import search
+
+        results["imslp"], results["musicbrainz"], error = search(
+            q, composer.canonical_name if composer else None
+        )
+
+    return templates.TemplateResponse(
+        request, "work.html",
+        {
+            "viewer": viewer, "work": work, "composer": composer, "pieces": pieces,
+            "catalogue": catalogue_label(work),
+            "q": q, "searched": q is not None, "results": results, "error": error,
+        },
+    )
+
+
+@router.post("/work/{work_id}/link")
+async def work_link(
+    work_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Set, confirm or clear a work's canonical links.
+
+    A link chosen here is marked confirmed, which stops a later automatic run
+    from overwriting it -- the same rule the catalogue fields follow.
+    """
+    from datetime import datetime, timezone
+
+    _viewer(request, session)
+    work = session.get(Work, work_id)
+    if work is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
+
+    form = await request.form()
+    action = form.get("action", "")
+
+    if action == "imslp":
+        work.imslp_url = (form.get("url") or "").strip() or None
+        work.imslp_title = (form.get("title") or "").strip() or None
+        work.confirmed = True
+        work.match_note = "IMSLP chosen by hand"
+    elif action == "musicbrainz":
+        work.musicbrainz_id = (form.get("mbid") or "").strip() or None
+        work.confirmed = True
+        work.match_note = "MusicBrainz chosen by hand"
+    elif action == "confirm":
+        work.confirmed = True
+    elif action == "clear":
+        work.imslp_url = work.imslp_title = work.musicbrainz_id = None
+        work.confirmed = False
+        work.match_note = "links cleared by hand"
+
+    work.enriched_at = datetime.now(timezone.utc)
+    return RedirectResponse(f"/work/{work.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # --- shelves and personal fields ------------------------------------------

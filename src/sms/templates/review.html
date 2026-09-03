@@ -8,8 +8,10 @@
     <div>
       <h1>Review</h1>
       <p class="muted">
-        {{ outstanding }} left{% if collection %} in {{ collection.name }}{% endif %}.
-        Confirm what is right, fix what is not.
+        {% if single %}Reviewing one piece. <a href="/review">Work the queue instead</a>&nbsp;&mdash;
+        {{ outstanding }} left.
+        {% else %}{{ outstanding }} left{% if collection %} in {{ collection.name }}{% endif %}.
+        Confirm what is right, fix what is not.{% endif %}
       </p>
     </div>
     <nav class="review-filters">
@@ -42,6 +44,7 @@
 
     <form class="review-form" method="post" action="/review/{{ item.id }}">
       <input type="hidden" name="next_route" value="{{ route }}">
+      {% if single %}<input type="hidden" name="return_to" value="/piece/{{ item.id }}">{% endif %}
       {% if collection %}<input type="hidden" name="collection" value="{{ collection.id }}">{% endif %}
 
       <p class="path"><code>{{ file.rel_path }}</code></p>

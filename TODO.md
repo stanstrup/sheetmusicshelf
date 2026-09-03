@@ -27,3 +27,11 @@ _(nothing outstanding — add items here)_
    pieces now link to a *work*, and the work carries the links. Matched on the
    catalogue number, and only for works with an accepted copy, so a guess never
    comes back wearing a citation.
+6) ~~clicking Review on a piece should review that piece~~ — the nav link
+   carries the piece, and submitting returns to it rather than the queue.
+7) ~~a button to delete a piece~~ — on the piece page. The PDF is untouched;
+   the page range is remembered so a re-scan cannot recreate the entry.
+8) ~~it is unclear how to accept a canonical match; there should be a search~~ —
+   `/work/<id>` shows the current links with confirm/clear, and searches IMSLP
+   and MusicBrainz so you can pick one by hand. A hand-picked link is marked
+   confirmed and automatic runs leave it alone.

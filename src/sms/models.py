@@ -425,6 +425,31 @@ class Annotation(Base):
     )
 
 
+class RemovedRange(Base):
+    """A page range a person deleted, remembered so a re-scan cannot undo it.
+
+    Without this, deleting a catalogue entry would only last until the next
+    scan: the ingester matches pieces by page range and recreates whatever is
+    missing. The file itself is never touched -- this records a decision about
+    the *catalogue*, not about the disk.
+    """
+
+    __tablename__ = "removed_range"
+    __table_args__ = (
+        UniqueConstraint("source_file_id", "page_start", "page_end", name="uq_removed_range"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_file_id: Mapped[int] = mapped_column(
+        ForeignKey("source_file.id", ondelete="CASCADE"), index=True
+    )
+    page_start: Mapped[int] = mapped_column(Integer)
+    page_end: Mapped[int] = mapped_column(Integer)
+    removed_by: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at = _now()
+
+
 JOB_STATES = ("queued", "running", "done", "failed", "cancelled")
 
 

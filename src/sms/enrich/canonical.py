@@ -214,3 +214,99 @@ def lookup(
             links.notes.append("no MusicBrainz work cites this catalogue number")
 
     return links
+
+
+# --- free-text search, for linking by hand ---------------------------------
+
+@dataclass
+class Candidate:
+    title: str
+    url: str = ""
+    id: str = ""
+    disambiguation: str = ""
+
+
+def search(
+    query: str,
+    composer: str | None = None,
+    limit: int = 8,
+) -> tuple[list[Candidate], list[Candidate], str]:
+    """Search both services by free text, for a person to choose from.
+
+    Deliberately unfiltered, unlike :func:`lookup`.  Automatic matching has to
+    refuse anything it cannot verify; a person looking at the results can tell
+    a Mozart fantasia from a Mozart sonata at a glance, and the works that most
+    need linking by hand are exactly the ones with no catalogue number for a
+    machine to check.
+
+    ``composer`` is used to narrow the MusicBrainz side. The page calling this
+    already knows whose work it is, so making the reader type the name again --
+    and hoping Lucene weighs it sensibly -- would be pointless.
+
+    Returns (imslp, musicbrainz, error) -- an error message rather than an
+    exception, because a half-working search is still useful.
+    """
+    query = (query or "").strip()
+    if not query:
+        return [], [], ""
+
+    imslp: list[Candidate] = []
+    musicbrainz: list[Candidate] = []
+    problems: list[str] = []
+
+    with _client() as client:
+        client.headers["User-Agent"] = USER_AGENT
+        try:
+            response = _get(client, IMSLP_API, params={
+                "action": "query", "format": "json", "list": "search",
+                "srsearch": query, "srlimit": limit, "srnamespace": 0,
+            })
+            if response.status_code == 200:
+                for hit in (response.json().get("query") or {}).get("search", []):
+                    title = hit.get("title") or ""
+                    slug = title.replace(" ", "_")
+                    imslp.append(Candidate(title=title, url=f"https://imslp.org/wiki/{slug}"))
+        except (LookupUnavailable, httpx.HTTPError) as exc:
+            problems.append(f"IMSLP search failed ({exc})")
+
+        # Search titles first. Handing raw text to MusicBrainz's Lucene parser
+        # searches every field, so "Mozart Allegro K.3" returns works literally
+        # *titled* "Mozart" ahead of the Allegro. A title search is what a
+        # person typing a work name actually means; the broad query is the
+        # fallback for when that finds nothing.
+        # Lucene defaults to OR, so "Mozart Allegro K.3" scores a work titled
+        # simply "Mozart" above the Allegro. Require every term, and constrain
+        # by artist when the caller knows it.
+        terms = " AND ".join(token for token in query.split() if token)
+        artist = surname(composer or "")
+        shapes = [f"work:({terms})"]
+        if artist:
+            shapes.insert(0, f'work:({terms}) AND artist:"{artist}"')
+        shapes.append(query)
+
+        for attempt in shapes:
+            try:
+                time.sleep(MUSICBRAINZ_PAUSE)
+                response = _get(client, f"{MUSICBRAINZ_API}/work", params={
+                    "query": attempt, "fmt": "json", "limit": limit,
+                })
+            except (LookupUnavailable, httpx.HTTPError) as exc:
+                problems.append(f"MusicBrainz search failed ({exc})")
+                break
+            if response.status_code != 200:
+                continue
+            for work in response.json().get("works", []):
+                # Type and attributes are what tell one "Allegro" from another.
+                extra = [work.get("disambiguation") or "", work.get("type") or ""]
+                extra += [str(a.get("value") or "") for a in work.get("attributes", [])]
+                musicbrainz.append(
+                    Candidate(
+                        title=work.get("title") or "",
+                        id=work.get("id") or "",
+                        disambiguation=" · ".join(x for x in extra if x),
+                    )
+                )
+            if musicbrainz:
+                break
+
+    return imslp, musicbrainz, "; ".join(problems)

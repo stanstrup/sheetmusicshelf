@@ -567,3 +567,47 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
   color: var(--ink-faint); margin: 0 0 4px;
 }
 .canonical .small { font-size: 12.5px; margin: 0 0 10px; max-width: 54ch; }
+
+/* --- work page ---------------------------------------------------------- */
+
+.workpage { max-width: 900px; margin: 0 auto; padding: 24px 20px 64px; }
+.workpage h1 { font-family: var(--serif); font-size: 27px; margin: 0; }
+.canonical h2 .edit {
+  font-size: 11px; font-weight: 400; margin-left: 8px;
+  letter-spacing: 0; text-transform: none;
+}
+.cansearch { display: flex; gap: 8px; margin: 10px 0 16px; }
+.cansearch input {
+  flex: 1; min-width: 0; padding: 7px 11px; font: inherit; font-size: 14px;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 4px;
+}
+.button.small { padding: 4px 12px; font-size: 12.5px; }
+.inline-actions { display: flex; gap: 8px; margin-top: 10px; }
+.inline-actions .button { cursor: pointer; border: 1px solid var(--rule); font: inherit; }
+
+.candlist { list-style: none; margin: 0 0 18px; padding: 0; }
+.candlist li { border-bottom: 1px solid var(--rule-soft); }
+.candlist form {
+  display: flex; align-items: baseline; gap: 12px; padding: 8px 0; font-size: 13.5px;
+}
+.candlist form > a { flex: 1; min-width: 0; }
+.candlist .button { cursor: pointer; border: none; font: inherit; white-space: nowrap; }
+.workpage h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--ink-faint); margin: 16px 0 4px;
+}
+
+.danger-zone { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--rule); }
+.danger-zone h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--alert); margin: 0 0 4px;
+}
+.danger-zone .small { margin: 0 0 10px; max-width: 58ch; }
+.danger-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.danger-row input {
+  flex: 1; min-width: 180px; padding: 6px 10px; font: inherit; font-size: 13.5px;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 4px;
+}
+.danger-zone .button.danger { cursor: pointer; border: 1px solid var(--alert); }

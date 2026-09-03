@@ -138,6 +138,16 @@ open internet, so every asset comes from the server.
   source and weight, one keystroke to accept. Accepting records decisions.
 - **Page ranges** — a thumbnail grid for splitting a book into pieces by hand,
   the authoritative fallback where a PDF carries no outline.
+- **Work** — canonical links, a search for setting them by hand, and every copy
+  of the work in the library.
+
+Reviewing from a piece reviews *that* piece rather than the head of the queue,
+and returns to it afterwards.
+
+Deleting a piece removes the catalogue entry and **leaves the PDF alone**. The
+page range is remembered, because otherwise the next scan would quietly
+recreate the entry — the ingester matches pieces by page range and makes
+whatever is missing.
 
 ## Annotations
 
@@ -226,7 +236,15 @@ must never come back carrying an IMSLP URL. Works with no catalogue number are
 not looked up at all — there is nothing strong enough to identify them.
 
 Verified against the live APIs: the stored URLs resolve, and the MusicBrainz
-titles match the works they are attached to.
+titles match the works they are attached to. 75 of 78 eligible works matched on
+IMSLP, 35 on MusicBrainz.
+
+**Linking by hand.** `/work/<id>` shows a work's links with confirm and clear,
+and searches both services so you can pick one yourself — which is the only way
+to link the works automatic matching refuses: those with no catalogue number,
+or numbered in a house scheme like the discs' "MOZ". Search is narrowed by the
+work's own composer, because the page already knows whose work it is. A
+hand-picked link is marked confirmed, and later automatic runs leave it alone.
 
 ## The managed tree
 

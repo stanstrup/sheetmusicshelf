@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ work.title }} &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<article class="workpage">
+
+  <header class="split-head">
+    <div>
+      <h1>{{ work.title }}</h1>
+      <p class="muted">
+        {% if composer %}<a href="/composer/{{ composer.id }}">{{ composer.canonical_name }}</a>{% endif %}
+        {% if catalogue %}&middot; {{ catalogue }}{% endif %}
+        {% if work.music_key %}&middot; {{ work.music_key }}{% endif %}
+        &middot; {{ pieces|length }} {{ "copy" if pieces|length == 1 else "copies" }} in the library
+      </p>
+    </div>
+  </header>
+
+  <section class="canonical">
+    <h2>Canonical sources</h2>
+
+    {% if work.imslp_url or work.musicbrainz_id %}
+      <ul class="linklist">
+        {% if work.imslp_url %}
+          <li>
+            <a href="{{ work.imslp_url }}" rel="noopener">{{ work.imslp_title or "IMSLP" }}</a>
+            <span class="muted">
+              IMSLP{% if work.confirmed %} &middot; confirmed{% else %} &middot; matched automatically{% endif %}
+            </span>
+          </li>
+        {% endif %}
+        {% if work.musicbrainz_id %}
+          <li>
+            <a href="https://musicbrainz.org/work/{{ work.musicbrainz_id }}" rel="noopener">
+              {{ work.musicbrainz_id }}</a>
+            <span class="muted">MusicBrainz</span>
+          </li>
+        {% endif %}
+      </ul>
+      <form method="post" action="/work/{{ work.id }}/link" class="inline-actions">
+        <input type="hidden" name="action" value="clear">
+        <button class="button ghost small" type="submit">Clear these links</button>
+        {% if not work.confirmed %}
+          <button class="button small" type="submit" name="action" value="confirm">
+            These are right &mdash; confirm
+          </button>
+        {% endif %}
+      </form>
+    {% else %}
+      <p class="muted small">
+        {% if work.enriched_at %}{{ work.match_note or "Nothing matched automatically." }}
+        {% else %}Not looked up automatically yet.{% endif %}
+        Search below to link one by hand.
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="canonical">
+    <h2>Search</h2>
+    <p class="muted small">
+      Automatic matching only accepts a page that cites the exact catalogue
+      number, so anything without one &mdash; or numbered in a house scheme like
+      the discs' &ldquo;MOZ&rdquo; &mdash; has to be found by hand.
+    </p>
+    <form class="cansearch" method="get" action="/work/{{ work.id }}">
+      <input name="q" value="{{ q or '' }}" placeholder="Composer and title, or a catalogue number&hellip;"
+             aria-label="Search IMSLP and MusicBrainz" autofocus>
+      <button class="button" type="submit">Search</button>
+    </form>
+
+    {% if searched %}
+      {% if not results.imslp and not results.musicbrainz %}
+        <p class="muted small">Nothing found for that. Try the composer's surname plus a title word.</p>
+      {% endif %}
+
+      {% if results.imslp %}
+        <h3>IMSLP</h3>
+        <ul class="candlist">
+          {% for hit in results.imslp %}
+            <li>
+              <form method="post" action="/work/{{ work.id }}/link">
+                <input type="hidden" name="action" value="imslp">
+                <input type="hidden" name="title" value="{{ hit.title }}">
+                <input type="hidden" name="url" value="{{ hit.url }}">
+                <a href="{{ hit.url }}" rel="noopener">{{ hit.title }}</a>
+                <button class="button small" type="submit">Use this</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if results.musicbrainz %}
+        <h3>MusicBrainz</h3>
+        <ul class="candlist">
+          {% for hit in results.musicbrainz %}
+            <li>
+              <form method="post" action="/work/{{ work.id }}/link">
+                <input type="hidden" name="action" value="musicbrainz">
+                <input type="hidden" name="mbid" value="{{ hit.id }}">
+                <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>
+                {% if hit.disambiguation %}<span class="muted">{{ hit.disambiguation }}</span>{% endif %}
+                <button class="button small" type="submit">Use this</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if error %}<p class="muted small">{{ error }}</p>{% endif %}
+    {% endif %}
+  </section>
+
+  {% if pieces %}
+    <section class="canonical">
+      <h2>Copies in the library</h2>
+      <ul class="linklist">
+        {% for piece in pieces %}
+          <li>
+            <a href="/piece/{{ piece.id }}">{{ piece.title or "Untitled" }}</a>
+            <span class="muted">{{ piece.source_file.collection.name }} &middot; {{ piece.page_count }}&thinsp;pp</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+</article>
+{% endblock %}

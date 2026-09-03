@@ -23,6 +23,7 @@
       {% if file.page_count > piece.page_count or siblings %}
         <a class="button ghost" href="/split/{{ file.id }}">Edit page ranges</a>
       {% endif %}
+      <a class="button ghost" href="/review?piece={{ piece.id }}">Review</a>
     </p>
 
     <dl class="facts">
@@ -47,7 +48,7 @@
 
     {% if work and (work.imslp_url or work.musicbrainz_id) %}
       <section class="canonical">
-        <h2>Canonical sources</h2>
+        <h2>Canonical sources <a class="edit" href="/work/{{ work.id }}">edit</a></h2>
         <p class="muted small">
           Matched on the catalogue number, which is the one identifier that
           survives every publisher's retitling.
@@ -67,10 +68,14 @@
           {% endif %}
         </ul>
       </section>
-    {% elif work and work.enriched_at %}
+    {% elif work %}
       <section class="canonical">
         <h2>Canonical sources</h2>
-        <p class="muted small">{{ work.match_note or "Nothing found." }}</p>
+        <p class="muted small">
+          {% if work.enriched_at %}{{ work.match_note or "Nothing matched." }}
+          {% else %}Not looked up yet.{% endif %}
+          <a href="/work/{{ work.id }}">Search and link one</a>.
+        </p>
       </section>
     {% endif %}
 
@@ -147,6 +152,19 @@
         </ul>
       </section>
     {% endif %}
+
+    <form class="danger-zone" method="post" action="/piece/{{ piece.id }}/delete"
+          onsubmit="return confirm('Delete this catalogue entry? The PDF on disk is not touched.');">
+      <h2>Delete</h2>
+      <p class="muted small">
+        Removes this entry from the catalogue. <strong>The PDF is not touched.</strong>
+        The page range is remembered, so the next scan will not recreate it.
+      </p>
+      <div class="danger-row">
+        <input name="reason" placeholder="Why (optional)&hellip;" aria-label="Reason">
+        <button class="button danger" type="submit">Delete entry</button>
+      </div>
+    </form>
   </div>
 
 </article>
