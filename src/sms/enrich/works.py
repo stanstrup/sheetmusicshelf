@@ -185,6 +185,7 @@ def enrich(session: Session, work: Work, *, force: bool = False) -> tuple[bool, 
             work.catalog_system,
             work.catalog_number,
             work.catalog_suffix or "",
+            work.title or "",
         )
     except canonical.LookupUnavailable as exc:
         return False, f"lookup unavailable ({exc})"
@@ -194,6 +195,10 @@ def enrich(session: Session, work: Work, *, force: bool = False) -> tuple[bool, 
         work.imslp_url = links.imslp_url
         work.imslp_title = links.imslp_title
         changed.append("IMSLP")
+    if links.year and (force or work.year is None):
+        work.year = links.year
+        work.year_note = links.year_note
+        changed.append(f"composed {links.year_note or links.year}")
     if links.musicbrainz_id and (force or not work.musicbrainz_id):
         work.musicbrainz_id = links.musicbrainz_id
         changed.append("MusicBrainz")

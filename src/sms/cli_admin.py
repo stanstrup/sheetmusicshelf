@@ -431,6 +431,49 @@ def work_list(limit: int = typer.Option(30, "--limit", "-n")) -> None:
         console.print(table)
 
 
+@work_app.command("years")
+def work_years(
+    limit: int = typer.Option(None, "--limit", "-n"),
+    force: bool = typer.Option(False, "--force", help="Re-read years already known."),
+) -> None:
+    """Read composition years from the IMSLP pages already linked.
+
+    Separate from `work enrich` so years can be backfilled for works that were
+    linked before this existed, without repeating their searches.
+    """
+    from .enrich.canonical import imslp_composition_year
+    from .enrich.wikipedia import LookupUnavailable, _client
+    from .models import Work as _Work
+
+    with session_scope() as session:
+        query = select(_Work).where(_Work.imslp_title.isnot(None))
+        if not force:
+            query = query.where(_Work.year.is_(None))
+        targets = list(session.scalars(query.order_by(_Work.composer_id, _Work.catalog_number)))
+        if limit:
+            targets = targets[:limit]
+        if not targets:
+            console.print("[dim]nothing to read; link works to IMSLP first[/dim]")
+            return
+
+        found = 0
+        with _client() as client:
+            for work in targets:
+                try:
+                    year, note = imslp_composition_year(client, work.imslp_title)
+                except LookupUnavailable as exc:
+                    console.print(f"  [dim]-[/dim] {work.title[:44]:46} unavailable ({exc})")
+                    continue
+                if year:
+                    work.year, work.year_note = year, note
+                    found += 1
+                    console.print(f"  [green]+[/green] {work.title[:44]:46} {note}")
+                else:
+                    console.print(f"  [dim]-[/dim] {work.title[:44]:46} no date on the page")
+                session.commit()
+    console.print(f"\n[green]{found}[/green] of {len(targets)} works dated")
+
+
 # --- tokens ---------------------------------------------------------------
 
 @token_app.command("create")

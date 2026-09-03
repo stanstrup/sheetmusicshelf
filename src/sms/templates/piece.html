@@ -30,6 +30,11 @@
       {% if piece.catalog_display %}<dt>Catalogue</dt><dd>{{ piece.catalog_display }}</dd>{% endif %}
       {% if piece.music_key %}<dt>Key</dt><dd>{{ piece.music_key }}</dd>{% endif %}
       {% if piece.form %}<dt>Form</dt><dd>{{ piece.form }}</dd>{% endif %}
+      {% if work and work.year %}
+        <dt>Composed</dt>
+        <dd>{{ work.year_note or work.year }}
+          <span class="muted">&mdash; from IMSLP</span></dd>
+      {% endif %}
       <dt>Pages</dt>
       <dd>
         {{ piece.page_count }}

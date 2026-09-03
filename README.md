@@ -246,6 +246,25 @@ or numbered in a house scheme like the discs' "MOZ". Search is narrowed by the
 work's own composer, because the page already knows whose work it is. A
 hand-picked link is marked confirmed, and later automatic runs leave it alone.
 
+### Using the public services properly
+
+MusicBrainz requires a User-Agent naming the application and a **reachable
+contact**, and blocks clients that omit one. `SMS_CONTACT` must therefore be set
+to an email address or a project URL before any lookup will run — there is no
+default, because a placeholder contact is worse than none: it looks compliant
+while being unreachable.
+
+Every outbound request passes through a process-wide rate gate
+(`sms.enrich.throttle`), so spacing holds *between* lookups and across threads,
+not merely within one call. Repeated rate-limit responses trip a circuit breaker
+and the host is left alone for a while — answering a 429 with more requests is
+precisely wrong.
+
+Composition years come from the IMSLP page already linked, so they cost one
+extra read rather than another search. The year is stored for sorting alongside
+the source's own wording, because reducing "ca. 1783" to 1783 promises precision
+the source did not give.
+
 ## The managed tree
 
 ```bash

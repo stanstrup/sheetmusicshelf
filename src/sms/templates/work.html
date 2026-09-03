@@ -11,6 +11,7 @@
         {% if composer %}<a href="/composer/{{ composer.id }}">{{ composer.canonical_name }}</a>{% endif %}
         {% if catalogue %}&middot; {{ catalogue }}{% endif %}
         {% if work.music_key %}&middot; {{ work.music_key }}{% endif %}
+        {% if work.year %}&middot; composed {{ work.year_note or work.year }}{% endif %}
         &middot; {{ pieces|length }} {{ "copy" if pieces|length == 1 else "copies" }} in the library
       </p>
     </div>
@@ -62,10 +63,14 @@
       number, so anything without one &mdash; or numbered in a house scheme like
       the discs' &ldquo;MOZ&rdquo; &mdash; has to be found by hand.
     </p>
-    <form class="cansearch" method="get" action="/work/{{ work.id }}">
-      <input name="q" value="{{ q or '' }}" placeholder="Composer and title, or a catalogue number&hellip;"
+    {# Prefilled with the work's own title and composer: that is what you would
+       type anyway, and the search is slow enough that saving the typing counts. #}
+    <form class="cansearch" method="get" action="/work/{{ work.id }}" id="cansearch">
+      <input name="q" value="{{ q if q is not none else suggested_query }}"
+             placeholder="Composer and title, or a catalogue number&hellip;"
              aria-label="Search IMSLP and MusicBrainz" autofocus>
       <button class="button" type="submit">Search</button>
+      <span class="searching" id="searching" hidden>Searching IMSLP and MusicBrainz&hellip;</span>
     </form>
 
     {% if searched %}
@@ -136,4 +141,21 @@
   {% endif %}
 
 </article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Both services are rate-limited and a search can take several seconds, so
+  // say so rather than leaving the page looking inert.
+  (function () {
+    var form = document.getElementById("cansearch");
+    if (!form) { return; }
+    form.addEventListener("submit", function () {
+      var note = document.getElementById("searching");
+      var button = form.querySelector("button");
+      if (note) { note.hidden = false; }
+      if (button) { button.disabled = true; button.textContent = "Searching\u2026"; }
+    });
+  }());
+</script>
 {% endblock %}

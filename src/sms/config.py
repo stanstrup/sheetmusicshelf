@@ -48,6 +48,29 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     debug: bool = False
 
+    # --- outbound identity ------------------------------------------------
+    #: MusicBrainz requires a User-Agent naming the application *and* a way to
+    #: reach whoever runs it, and blocks clients that do not comply. There is
+    #: deliberately no default: a placeholder contact is worse than none,
+    #: because it looks compliant while being unreachable.
+    contact: str = ""
+
+    @property
+    def has_contact(self) -> bool:
+        who = self.contact.strip()
+        # An address or a URL. "unknown", "none" and the like are not contacts.
+        return "@" in who or who.startswith(("http://", "https://"))
+
+    @property
+    def user_agent(self) -> str:
+        if not self.has_contact:
+            raise RuntimeError(
+                "SMS_CONTACT is not set to an email address or URL. MusicBrainz "
+                "requires a reachable contact in the User-Agent and blocks "
+                "clients that omit one, so no request is made without it."
+            )
+        return f"SheetMusicShelf/0.1 ( {self.contact.strip()} )"
+
     @field_validator("source_root", "managed_root", "cache_root", mode="before")
     @classmethod
     def _as_path(cls, value: object) -> object:

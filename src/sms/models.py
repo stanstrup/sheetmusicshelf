@@ -109,7 +109,11 @@ class Work(Base):
     catalog_sub: Mapped[int | None] = mapped_column(Integer)
 
     music_key: Mapped[str | None] = mapped_column(String(32), index=True)
-    year: Mapped[int | None] = mapped_column(Integer)
+    year: Mapped[int | None] = mapped_column(Integer, index=True)
+    #: What the source actually said -- "1774", "1774-75", "ca. 1783". The year
+    #: column is a single number for sorting; this keeps the qualification that
+    #: number throws away.
+    year_note: Mapped[str | None] = mapped_column(String(80))
     form: Mapped[str | None] = mapped_column(String(80), index=True)
     period: Mapped[str | None] = mapped_column(String(40), index=True)
     movement_no: Mapped[int | None] = mapped_column(Integer)

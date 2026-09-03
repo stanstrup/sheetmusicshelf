@@ -32,6 +32,9 @@ services:
       SMS_BASE_URL: https://sheetmusic.agnostan.org
       SMS_OIDC_ISSUER: https://auth.agnostan.org/application/o/sheetmusicshelf/
       SMS_LOAD_CEILING: "6"
+      # MusicBrainz requires a reachable contact in the User-Agent and
+      # blocks clients without one. Set it in .sheetmusicshelf.env.
+      SMS_CONTACT: ${SMS_CONTACT:?set SMS_CONTACT to your email or a project URL}
     volumes:
       # Read-only, deliberately: the design says "copy, never move", and the
       # mount is what enforces it if the code ever gets it wrong.

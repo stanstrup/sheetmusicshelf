@@ -45,9 +45,15 @@ WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php"
 WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 
-# Wikimedia asks for a descriptive User-Agent that identifies the tool and a
-# way to reach its operator.  Anonymous scraping gets rate-limited, rightly.
-USER_AGENT = "SheetMusicShelf/0.1 (self-hosted personal music library; +https://github.com/)"
+def user_agent() -> str:
+    """Identify this client, as MusicBrainz and Wikimedia both require.
+
+    Raises if no contact is configured. That is deliberate: MusicBrainz blocks
+    clients that do not identify themselves, and an earlier version of this
+    file claimed "+https://github.com/", which is not a contact at all. Failing
+    to start a lookup is a great deal cheaper than being banned mid-run.
+    """
+    return get_settings().user_agent
 
 TIMEOUT = httpx.Timeout(15.0, connect=8.0)
 #: Wikimedia rate-limits anonymous clients. Back off and retry rather than
@@ -123,15 +129,24 @@ class LookupUnavailable(RuntimeError):
 def _client() -> httpx.Client:
     return httpx.Client(
         timeout=TIMEOUT,
-        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+        headers={"User-Agent": user_agent(), "Accept": "application/json"},
         follow_redirects=True,
     )
 
 
 def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
-    """GET with backoff on the statuses that mean "later, not never"."""
+    """GET through the host's rate gate, with backoff on "later, not never".
+
+    Every outbound request goes through :mod:`sms.enrich.throttle`, so spacing
+    holds across lookups and across threads rather than only within one call.
+    """
+    from .throttle import gate_for
+
+    gate = gate_for(url)
     delay = BACKOFF_BASE
     for attempt in range(MAX_RETRIES):
+        if gate is not None:
+            gate.wait()
         try:
             response = client.get(url, **kwargs)
         except httpx.HTTPError as exc:
@@ -142,6 +157,13 @@ def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
             continue
 
         if response.status_code in RETRY_STATUSES:
+            retry_after = response.headers.get("retry-after")
+            try:
+                after = float(retry_after) if retry_after else None
+            except ValueError:
+                after = None
+            if gate is not None:
+                gate.throttled(after)
             if attempt == MAX_RETRIES - 1:
                 # Name the host: "503 after 4 tries" does not say which of the
                 # three services gave up, which is the first thing you need.
@@ -158,6 +180,8 @@ def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
             time.sleep(min(pause, 60))
             delay *= 2
             continue
+        if gate is not None:
+            gate.ok()
         return response
     raise LookupUnavailable("exhausted retries")
 

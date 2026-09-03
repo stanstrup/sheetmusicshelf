@@ -564,6 +564,9 @@ def work_detail(
             "viewer": viewer, "work": work, "composer": composer, "pieces": pieces,
             "catalogue": catalogue_label(work),
             "q": q, "searched": q is not None, "results": results, "error": error,
+            "suggested_query": " ".join(
+                part for part in ((composer.canonical_name if composer else ""), work.title or "") if part
+            ).strip(),
         },
     )
 
