@@ -37,6 +37,7 @@ DENORMALISED = {
     "catalog": "catalog_display",
     "key": "music_key",
     "form": "form",
+    "instrumentation": "instrumentation",
     "movement_no": "movement",
     "arranger": "arranger",
     "edition": "edition",

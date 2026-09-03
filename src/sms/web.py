@@ -105,6 +105,7 @@ def _filtered(session: Session, params: dict):
     for column, key in (
         (Piece.composer_name, "composer"),
         (Piece.form, "form"),
+        (Piece.instrumentation, "instrument"),
         (Piece.music_key, "key"),
         (Piece.status, "status"),
         (Piece.route, "route"),
@@ -160,6 +161,7 @@ def _facets(session: Session) -> dict:
     return {
         "composer": values(Piece.composer_name),
         "form": values(Piece.form),
+        "instrument": values(Piece.instrumentation),
         "key": values(Piece.music_key),
         "period": [(name, count) for name, count in periods if name],
         "collections": session.execute(
@@ -181,6 +183,7 @@ def home(
     q: str | None = None,
     composer: str | None = None,
     form: str | None = None,
+    instrument: str | None = None,
     key: str | None = None,
     status_: str | None = Query(None, alias="status"),
     route: str | None = None,
@@ -192,6 +195,7 @@ def home(
     viewer = _viewer(request, session)
     params = {
         "q": q, "composer": composer, "form": form, "key": key,
+        "instrument": instrument,
         "status": status_, "route": route, "collection": collection,
         "period": period, "sort": sort,
     }
@@ -416,7 +420,7 @@ def review(
         current = {
             "composer": item.composer_name, "title": item.title,
             "catalog": item.catalog_display, "key": item.music_key,
-            "form": item.form, "instrumentation": None,
+            "form": item.form, "instrumentation": item.instrumentation,
         }
         for name, label in REVIEW_FIELDS:
             options = [c for c in candidates if c.field == name]

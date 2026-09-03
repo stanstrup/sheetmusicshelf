@@ -30,6 +30,7 @@ def list_pieces(
     q: str | None = Query(None, description="Free text over title, composer and catalogue number."),
     composer: str | None = None,
     form: str | None = None,
+    instrument: str | None = Query(None, description="What it is scored for, e.g. 'solo piano'."),
     music_key: str | None = None,
     collection_id: int | None = None,
     route: str | None = Query(None, description="accept | review | hold"),
@@ -56,6 +57,8 @@ def list_pieces(
         query = query.where(Piece.composer_name.ilike(f"%{composer}%"))
     if form:
         query = query.where(Piece.form.ilike(f"%{form}%"))
+    if instrument:
+        query = query.where(Piece.instrumentation.ilike(f"%{instrument}%"))
     if music_key:
         query = query.where(Piece.music_key == music_key)
     if collection_id is not None:
@@ -118,6 +121,7 @@ def facets(
     return {
         "composer": values(Piece.composer_name),
         "form": values(Piece.form),
+        "instrument": values(Piece.instrumentation),
         "key": values(Piece.music_key),
         "status": values(Piece.status),
     }

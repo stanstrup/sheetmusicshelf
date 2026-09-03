@@ -249,6 +249,11 @@ class Piece(Base):
     catalog_sub: Mapped[int | None] = mapped_column(Integer)
     music_key: Mapped[str | None] = mapped_column(String(32), index=True)
     form: Mapped[str | None] = mapped_column(String(80), index=True)
+    #: What the music is scored for, as a phrase: "solo piano", "violin and
+    #: piano".  A denormalised string rather than a link to :class:`Instrument`
+    #: because that is the shape the adapters can actually observe -- a folder
+    #: called "violpian" says "violin and piano" and nothing finer.
+    instrumentation: Mapped[str | None] = mapped_column(String(120), index=True)
     #: Which movement of its work this file holds, when the work is split over
     #: several files.  None for the ordinary case of one file, one piece.
     movement: Mapped[int | None] = mapped_column(Integer)
