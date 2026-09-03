@@ -26,6 +26,7 @@ db_app = typer.Typer(help="Database schema management.")
 collection_app = typer.Typer(help="Register and scan collections.")
 token_app = typer.Typer(help="API tokens for agents and devices.")
 composer_app = typer.Typer(help="Composer authority records and enrichment.")
+work_app = typer.Typer(help="Work authority records and canonical source links.")
 
 
 # --- database -------------------------------------------------------------
@@ -342,6 +343,90 @@ def composer_list() -> None:
             table.add_row(
                 str(composer.id), composer.canonical_name, composer.lifespan or "-",
                 composer.period or "-", "yes" if composer.portrait_file else "-", str(pieces),
+            )
+        console.print(table)
+
+
+# --- works ----------------------------------------------------------------
+
+@work_app.command("link")
+def work_link(
+    collection_id: int = typer.Option(None, "--collection", "-c"),
+    relink: bool = typer.Option(False, "--relink", help="Also re-link pieces that already have a work."),
+) -> None:
+    """Build work records from the catalogue and link pieces to them.
+
+    Identity is the catalogue number where there is one -- the strongest thing
+    a classical library has. Six editions of K. 283 become one work.
+    """
+    from .enrich.works import link
+
+    with session_scope() as session:
+        result = link(session, collection_id, relink)
+    console.print(
+        f"[green]{result.works_created} works created[/green], "
+        f"{result.pieces_linked} pieces linked "
+        f"[dim](by catalogue: {result.by_key.get('catalogue', 0)}, by title: {result.by_key.get('title', 0)})[/dim]"
+    )
+    if result.skipped_no_composer or result.skipped_no_title:
+        console.print(
+            f"[dim]skipped: {result.skipped_no_composer} with no known composer, "
+            f"{result.skipped_no_title} with no title[/dim]"
+        )
+
+
+@work_app.command("enrich")
+def work_enrich(
+    limit: int = typer.Option(None, "--limit", "-n"),
+    force: bool = typer.Option(False, "--force"),
+    pause: float = typer.Option(1.0, "--pause", help="Seconds between works."),
+) -> None:
+    """Link works to IMSLP and MusicBrainz by catalogue number."""
+    import time
+
+    from .enrich.works import counts, enrich, pending
+    from .models import Work as _Work
+
+    with session_scope() as session:
+        targets = (
+            list(session.scalars(select(_Work).order_by(_Work.composer_id, _Work.catalog_number)))[: limit or None]
+            if force
+            else pending(session, limit)
+        )
+        if not targets:
+            console.print("[dim]nothing to look up; run `sms work link` first[/dim]")
+            return
+
+        for index, work in enumerate(targets):
+            changed, message = enrich(session, work, force=force)
+            mark = "[green]+[/green]" if changed else "[dim]-[/dim]"
+            label = f"{work.catalog_system}. {work.catalog_number}{work.catalog_suffix or ''}"
+            console.print(f"  {mark} {label:12} {work.title[:44]:46} {message}")
+            session.commit()
+            if index < len(targets) - 1:
+                time.sleep(pause)
+
+        stats = counts(session)
+    console.print(
+        f"\n[green]{stats['imslp']} IMSLP[/green] / [green]{stats['musicbrainz']} MusicBrainz[/green] "
+        f"of {stats['with_catalogue']} works with a catalogue number"
+    )
+
+
+@work_app.command("list")
+def work_list(limit: int = typer.Option(30, "--limit", "-n")) -> None:
+    from .models import Work as _Work
+
+    with session_scope() as session:
+        table = Table(header_style="dim")
+        for column in ("id", "catalogue", "title", "IMSLP", "MusicBrainz"):
+            table.add_column(column, overflow="ellipsis")
+        for work in session.scalars(select(_Work).order_by(_Work.composer_id, _Work.catalog_number).limit(limit)):
+            label = f"{work.catalog_system}. {work.catalog_number}{work.catalog_suffix or ''}" if work.catalog_system else "-"
+            table.add_row(
+                str(work.id), label, (work.title or "")[:44],
+                "yes" if work.imslp_url else "-",
+                (work.musicbrainz_id or "-")[:8],
             )
         console.print(table)
 

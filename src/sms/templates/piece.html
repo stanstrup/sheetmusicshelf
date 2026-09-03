@@ -45,6 +45,35 @@
       <dt>File</dt><dd><code>{{ file.rel_path }}</code></dd>
     </dl>
 
+    {% if work and (work.imslp_url or work.musicbrainz_id) %}
+      <section class="canonical">
+        <h2>Canonical sources</h2>
+        <p class="muted small">
+          Matched on the catalogue number, which is the one identifier that
+          survives every publisher's retitling.
+        </p>
+        <ul class="linklist">
+          {% if work.imslp_url %}
+            <li>
+              <a href="{{ work.imslp_url }}" rel="noopener">IMSLP</a>
+              <span class="muted">{{ work.imslp_title }}</span>
+            </li>
+          {% endif %}
+          {% if work.musicbrainz_id %}
+            <li>
+              <a href="https://musicbrainz.org/work/{{ work.musicbrainz_id }}" rel="noopener">MusicBrainz</a>
+              <span class="muted">{{ work.musicbrainz_id[:8] }}&hellip;</span>
+            </li>
+          {% endif %}
+        </ul>
+      </section>
+    {% elif work and work.enriched_at %}
+      <section class="canonical">
+        <h2>Canonical sources</h2>
+        <p class="muted small">{{ work.match_note or "Nothing found." }}</p>
+      </section>
+    {% endif %}
+
     <div class="confidence {{ piece.route }}">
       <p>
         <strong>{{ "%.2f"|format(piece.confidence) }}</strong>

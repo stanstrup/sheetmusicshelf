@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import get_session
-from .models import Collection, Composer, FieldCandidate, Piece, Shelf, ShelfItem, SourceFile
+from .models import Collection, Composer, FieldCandidate, Piece, Shelf, ShelfItem, SourceFile, Work
 
 log = logging.getLogger("sms.web")
 
@@ -239,17 +239,14 @@ def piece_detail(
             .limit(50)
         )
     )
+    # Other copies come from the work record now, not from matching the
+    # catalogue *string* -- which missed "Op. 10 no. 1" against "Op.10 No.1".
+    work = session.get(Work, piece.work_id) if piece.work_id else None
     editions = []
-    if piece.catalog_display:
+    if work is not None:
         editions = list(
             session.scalars(
-                select(Piece)
-                .where(
-                    Piece.catalog_display == piece.catalog_display,
-                    Piece.composer_name == piece.composer_name,
-                    Piece.id != piece.id,
-                )
-                .limit(20)
+                select(Piece).where(Piece.work_id == work.id, Piece.id != piece.id).limit(20)
             )
         )
     composer = None
@@ -261,7 +258,7 @@ def piece_detail(
         request,
         "piece.html",
         {
-            "viewer": viewer, "piece": piece, "composer": composer,
+            "viewer": viewer, "piece": piece, "composer": composer, "work": work,
             "shelves": list(session.scalars(select(Shelf).order_by(Shelf.name))),
             "file": piece.source_file, "collection": piece.source_file.collection,
             "siblings": siblings, "editions": editions,

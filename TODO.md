@@ -23,3 +23,7 @@ _(nothing outstanding — add items here)_
 4) ~~enrich composer metadata from wikipedia with an image and time period~~ —
    Wikidata-first lookup, cached portrait with attribution, period derived from
    dates.
+5) ~~pieces should link canonical sources/catalogues — MusicBrainz, IMSLP~~ —
+   pieces now link to a *work*, and the work carries the links. Matched on the
+   catalogue number, and only for works with an accepted copy, so a guess never
+   comes back wearing a citation.

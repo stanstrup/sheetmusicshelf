@@ -202,6 +202,32 @@ Portraits are downloaded and cached locally rather than hot-linked, and the
 photographer credit and licence are stored and displayed with them — most
 Commons portraits are CC-BY-SA and showing one uncredited is a licence breach.
 
+## Canonical sources
+
+```bash
+sms work link       # build work records from the catalogue, link pieces to them
+sms work enrich     # match works to IMSLP and MusicBrainz
+```
+
+Six editions of K. 283 across three collections are six *pieces* but one
+*work*, with one IMSLP page and one MusicBrainz id. `work link` builds that
+layer; identity is the catalogue number where there is one, because it is the
+one identifier that survives translation and every publisher's retitling.
+
+Matching is on the catalogue number alone. A candidate is accepted only when
+its title cites **the exact number** — "K. 283" must not match K. 2831 or K. 28
+— *and* carries the composer's surname. Title similarity is not enough: "Piano
+Sonata No. 5" exists for a dozen composers.
+
+**Only works with an accepted copy are looked up.** Attaching an authoritative
+link to a guess launders the guess into a citation; the archive adapter reads
+one folder as "The Magic Flute, Op. 1 no. 3" when the work is K. 620, and that
+must never come back carrying an IMSLP URL. Works with no catalogue number are
+not looked up at all — there is nothing strong enough to identify them.
+
+Verified against the live APIs: the stored URLs resolve, and the MusicBrainz
+titles match the works they are attached to.
+
 ## The managed tree
 
 ```bash

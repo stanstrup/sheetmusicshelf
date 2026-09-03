@@ -30,6 +30,7 @@ console = Console()
 app.add_typer(cli_admin.db_app, name="db")
 app.add_typer(cli_admin.collection_app, name="collection")
 app.add_typer(cli_admin.composer_app, name="composer")
+app.add_typer(cli_admin.work_app, name="work")
 app.add_typer(cli_admin.token_app, name="token")
 app.command("worker")(cli_admin.worker)
 

@@ -113,6 +113,20 @@ class Work(Base):
     form: Mapped[str | None] = mapped_column(String(80), index=True)
     period: Mapped[str | None] = mapped_column(String(40), index=True)
     movement_no: Mapped[int | None] = mapped_column(Integer)
+
+    # --- canonical sources ---
+    # Links belong to the work, not to each copy of it: the six editions of
+    # K. 283 in this library are one piece of music with one IMSLP page.
+    musicbrainz_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    imslp_title: Mapped[str | None] = mapped_column(Text)
+    imslp_url: Mapped[str | None] = mapped_column(Text)
+    wikidata_id: Mapped[str | None] = mapped_column(String(24))
+    #: How the match was made and how far it can be trusted, in words. A link
+    #: nobody can check is worse than no link.
+    match_note: Mapped[str | None] = mapped_column(Text)
+    enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: True when a person confirmed the link.
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at = _now()
 
     composer: Mapped[Composer | None] = relationship(back_populates="works")
