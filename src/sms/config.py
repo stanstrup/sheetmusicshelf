@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     source_root: Path = Path("/library/source")
     #: Where the app builds its own tree.  Originals are copied here, never moved.
     managed_root: Path = Path("/library/managed")
+    #: Where new material is dropped for import, Calibre-style.  Files here are
+    #: filed into the managed tree and then removed, so this folder is a queue
+    #: and not a location: nothing is ever read from it after import.
+    ingest_root: Path = Path("/library/ingest")
     #: Thumbnails and extracted text.  A named volume, never the CIFS share.
     cache_root: Path = Path("/cache")
 
@@ -71,7 +75,7 @@ class Settings(BaseSettings):
             )
         return f"SheetMusicShelf/0.1 ( {self.contact.strip()} )"
 
-    @field_validator("source_root", "managed_root", "cache_root", mode="before")
+    @field_validator("source_root", "managed_root", "cache_root", "ingest_root", mode="before")
     @classmethod
     def _as_path(cls, value: object) -> object:
         return Path(str(value)) if value else value

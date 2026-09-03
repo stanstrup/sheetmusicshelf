@@ -164,6 +164,88 @@ def collection_scan(
     )
 
 
+def ingest(
+    apply: bool = typer.Option(False, "--apply", help="Actually import. Without this it only shows the plan."),
+    keep: bool = typer.Option(False, "--keep", help="Leave the files in the ingest folder afterwards."),
+    no_hash: bool = typer.Option(False, "--no-hash", help="Skip SHA-256 (faster over SMB)."),
+) -> None:
+    """Import whatever has been dropped in the ingest folder.
+
+    The Calibre arrangement: drop files in, and they are catalogued, filed into
+    the library tree, and removed from the drop.  Nothing is deleted until the
+    library actually holds a copy of the same size, and `--keep` skips the
+    removal entirely if you would rather empty the folder yourself.
+
+    Dry run by default.
+    """
+    from .library import clear_ingested, ingest_collection, materialise
+
+    settings = get_settings()
+    root = settings.ingest_root
+    if not root.is_dir():
+        console.print(f"[yellow]nothing to do:[/yellow] no ingest folder at {root}")
+        raise typer.Exit(0)
+
+    with session_scope() as session:
+        collection = ingest_collection(session, root)
+        adapter, context = build_context(root, get_adapter(collection.adapter))
+        stats = ScanStats()
+
+        with console.status(f"reading {root}...") as status:
+            for signals, proposal in iter_proposals(root, adapter, context, with_hash=not no_hash):
+                stats.record(
+                    proposal,
+                    auto_accept=collection.auto_accept,
+                    review_floor=collection.review_floor,
+                )
+                if signals is not None and apply:
+                    commit_proposal(session, collection, signals, proposal)
+                if stats.files_seen % 25 == 0:
+                    if apply:
+                        session.commit()
+                    status.update(f"reading {root}: {stats.files_seen} files")
+
+        if not stats.files_seen:
+            console.print(f"[dim]ingest folder is empty: {root}[/dim]")
+            raise typer.Exit(0)
+
+        if not apply:
+            console.print(
+                f"[green]{stats.files_seen} files[/green] would be imported from {root}\n"
+                f"[dim]re-run with --apply to catalogue them, file them into "
+                f"{settings.managed_root} and empty the folder[/dim]"
+            )
+            raise typer.Exit(0)
+
+        from datetime import datetime, timezone
+
+        collection.adapter = adapter.name
+        collection.last_scanned_at = datetime.now(timezone.utc)
+        session.commit()
+
+        # Filed whatever the confidence: a piece waiting for review still has
+        # to live somewhere, and in this arrangement the library is the only
+        # place there is.
+        result = materialise(session, collection, dry_run=False, only_accepted=False)
+        session.commit()
+
+        removed, errors = (0, []) if keep else clear_ingested(session, collection, root)
+
+    console.print(
+        f"[green]{stats.files_seen} files[/green] imported -> {stats.pieces} pieces: "
+        f"[green]{stats.by_route['accept']} accept[/green] / "
+        f"[yellow]{stats.by_route['review']} review[/yellow] / "
+        f"[red]{stats.by_route['hold']} hold[/red]"
+    )
+    console.print(f"{result.copied} filed into {get_settings().managed_root}")
+    if keep:
+        console.print("[dim]left in the ingest folder as asked[/dim]")
+    else:
+        console.print(f"{removed} removed from the ingest folder")
+    for problem in [*result.errors, *errors]:
+        console.print(f"[red]{problem}[/red]")
+
+
 @collection_app.command("materialise")
 def collection_materialise(
     collection_id: int = typer.Argument(...),

@@ -9,9 +9,6 @@ _(nothing outstanding — add items here)_
   needed any more: offline was ruled out, and annotation now works in the
   browser, which were its two justifications. Say the word if you want it
   anyway and I will write it as unverified source for you to build.
-- **Which collection to materialise next** — only the Mozart set has been
-  copied into `Z:\Books\SheetMusic`, because it is the only one with accepted
-  pieces. The archive and pop collections copy when their pieces are reviewed.
 
 ## Done
 
@@ -84,3 +81,22 @@ _(nothing outstanding — add items here)_
    readings are withdrawn on a re-scan, and a field whose last candidate is
    gone is cleared from the row instead of standing. Human decisions and
    anything posted through the curation API are untouched.
+
+18) ~~don't mount the whole music folder; have an ingest folder like Calibre~~ —
+   the library now holds the files, so where one came from stops mattering once
+   it is in. All 1,926 catalogued files are in `Z:\Books\SheetMusic` (875 MB),
+   and the compose file mounts only that plus a drop folder,
+   `Z:\Books\SheetMusicIngest`. The music collection is not mounted at all.
+
+   `sms ingest` is the Calibre auto-add flow: drop PDFs in, they are
+   catalogued, filed into the library and removed from the drop. Dry run by
+   default, and nothing is deleted until the library holds a copy of the same
+   size (`--keep` skips the removal entirely).
+
+   Two things had to be fixed to make the library authoritative. A folder name
+   is made from metadata, so review changing a title or composer now *moves*
+   the file and prunes the folder it emptied -- copying again would leave a
+   folder behind for every name a piece ever had. And two catalogue rows can no
+   longer share one file: the pop collection holds the same arrangement twice
+   under different numbers, and matching on size alone let the second row point
+   at the first row's copy and never get one of its own.

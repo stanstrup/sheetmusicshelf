@@ -26,8 +26,8 @@ services:
     environment:
       TZ: Europe/Copenhagen
       SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
-      SMS_SOURCE_ROOT: /library/source
       SMS_MANAGED_ROOT: /library/managed
+      SMS_INGEST_ROOT: /library/ingest
       SMS_CACHE_ROOT: /cache
       SMS_BASE_URL: https://sheetmusic.agnostan.org
       SMS_OIDC_ISSUER: https://auth.agnostan.org/application/o/sheetmusicshelf/
@@ -36,12 +36,15 @@ services:
       # blocks clients without one. Set it in .sheetmusicshelf.env.
       SMS_CONTACT: ${SMS_CONTACT:?set SMS_CONTACT to your email or a project URL}
     volumes:
-      # Read-only, deliberately: the design says "copy, never move", and the
-      # mount is what enforces it if the code ever gets it wrong.
-      - /mnt/z/Books/Music:/library/source:ro
-      # The managed tree the app builds.  audiobookshelf only indexes
-      # Books/_Calibre Library, so this does not collide with it.
+      # The library.  Everything catalogued lives here, so this is the only
+      # mount that has to be present for the app to serve a page.
+      # audiobookshelf only indexes Books/_Calibre Library, so nothing collides.
       - /mnt/z/Books/SheetMusic:/library/managed:rw
+      # The drop folder, Calibre-style: put PDFs in, run `sms ingest --apply`,
+      # and they are catalogued, filed into the library and removed from here.
+      # Deliberately not the music collection itself -- an ingest folder is a
+      # queue, and the app empties it.
+      - /mnt/z/Books/SheetMusicIngest:/library/ingest:rw
       # Thumbnails and extracted text: thousands of small files, so a named
       # volume rather than CIFS (same reason SQLite configs live on volumes).
       - sheetmusicshelf-cache:/cache
@@ -63,16 +66,16 @@ services:
     environment:
       TZ: Europe/Copenhagen
       SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
-      SMS_SOURCE_ROOT: /library/source
       SMS_MANAGED_ROOT: /library/managed
+      SMS_INGEST_ROOT: /library/ingest
       SMS_CACHE_ROOT: /cache
       # The worker pauses between files while the 1-minute load average is above
       # this.  On a 4-core box carrying ~45 containers, a scan that ignores load
       # is not a slow scan -- it is an outage for everything else.
       SMS_LOAD_CEILING: "6"
     volumes:
-      - /mnt/z/Books/Music:/library/source:ro
       - /mnt/z/Books/SheetMusic:/library/managed:rw
+      - /mnt/z/Books/SheetMusicIngest:/library/ingest:rw
       - sheetmusicshelf-cache:/cache
     deploy:
       resources:
