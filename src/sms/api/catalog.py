@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from ..auth import Principal, require
 from ..db import get_session
 from ..library import resolve_source
+from ..catalog_query import Filters, base_query, facet_values, narrow
 from ..models import Piece, SourceFile
 from ..schemas import PieceOut
 
@@ -42,37 +43,19 @@ def list_pieces(
     offset: int = Query(0, ge=0),
     order: str = Query("composer", description="composer | title | confidence | recent"),
 ) -> list[PieceOut]:
-    query = select(Piece).join(SourceFile, Piece.source_file_id == SourceFile.id)
-
-    if q:
-        like = f"%{q.strip()}%"
-        query = query.where(
-            or_(
-                Piece.title.ilike(like),
-                Piece.composer_name.ilike(like),
-                Piece.catalog_display.ilike(like),
-            )
-        )
-    if composer:
-        query = query.where(Piece.composer_name.ilike(f"%{composer}%"))
-    if form:
-        query = query.where(Piece.form.ilike(f"%{form}%"))
-    if instrument:
-        query = query.where(Piece.instrumentation.ilike(f"%{instrument}%"))
-    if music_key:
-        query = query.where(Piece.music_key == music_key)
-    if collection_id is not None:
-        query = query.where(SourceFile.collection_id == collection_id)
-    if route:
-        query = query.where(Piece.route == route)
-    if review_state:
-        query = query.where(Piece.review_state == review_state)
-    if status_:
-        query = query.where(Piece.status == status_)
-    if min_difficulty is not None:
-        query = query.where(Piece.difficulty >= min_difficulty)
-    if max_difficulty is not None:
-        query = query.where(Piece.difficulty <= max_difficulty)
+    # Text is matched by substring here because these values are typed, not
+    # chosen from a list.  Everything else is the same narrowing the browse
+    # page does, from the same place.
+    query = narrow(
+        base_query(),
+        Filters(
+            q=q, composer=composer, form=form, instrument=instrument, key=music_key,
+            status=status_, route=route, review_state=review_state,
+            collection_id=collection_id,
+            min_difficulty=min_difficulty, max_difficulty=max_difficulty,
+        ),
+        text_match="contains",
+    )
 
     orderings = {
         "composer": (

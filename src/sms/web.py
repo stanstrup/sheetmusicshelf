@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import commit_now, get_session
+from .catalog_query import Filters, base_query, facet_values, narrow
 from .models import (
     Collection, Composer, FieldCandidate, Piece, RemovedRange, Shelf, ShelfItem,
     SourceFile, Work,
@@ -91,39 +92,12 @@ def _viewer(request: Request, session: Session) -> Principal:
 
 
 def _filtered(session: Session, params: dict):
-    query = select(Piece).join(SourceFile, Piece.source_file_id == SourceFile.id)
+    """The browse query: shared filters, then this page's own ordering.
 
-    if params.get("q"):
-        like = f"%{params['q'].strip()}%"
-        query = query.where(
-            or_(
-                Piece.title.ilike(like),
-                Piece.composer_name.ilike(like),
-                Piece.catalog_display.ilike(like),
-            )
-        )
-    for column, key in (
-        (Piece.composer_name, "composer"),
-        (Piece.form, "form"),
-        (Piece.instrumentation, "instrument"),
-        (Piece.music_key, "key"),
-        (Piece.status, "status"),
-        (Piece.route, "route"),
-    ):
-        value = params.get(key)
-        if value:
-            query = query.where(column == value)
-    if params.get("collection"):
-        query = query.where(SourceFile.collection_id == int(params["collection"]))
-    if params.get("period"):
-        # Period lives on the composer authority record, not on the piece, so
-        # filtering by it means going through the composer.
-        query = query.join(
-            Composer, Composer.canonical_name == Piece.composer_name
-        ).where(Composer.period == params["period"])
-
-    # Rejected entries are not part of the catalogue.
-    query = query.where(Piece.review_state != "rejected")
+    Text is matched exactly here because the values come from clicking a
+    facet, where a substring match would quietly widen what was asked for.
+    """
+    query = narrow(base_query(), Filters.from_params(params), text_match="exact")
 
     orderings = {
         "composer": (
