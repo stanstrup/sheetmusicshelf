@@ -494,6 +494,13 @@ async def review_submit(
             auto_accept=source_collection.auto_accept,
             review_floor=source_collection.review_floor,
         )
+        # The library folder is named from this metadata, so a correction here
+        # means a file has to move.  Queued rather than done inline: the move
+        # is filesystem work over SMB and the reviewer is waiting for the next
+        # piece, not for a copy.
+        from .jobs import enqueue_once
+
+        enqueue_once(session, "materialise", {"collection_id": source_collection.id})
     else:
         # Skipped: leave it pending but push it behind the rest for now.
         piece.confidence = min(piece.confidence + 0.0001, 0.9999)

@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -51,6 +51,21 @@ def enqueue(session: Session, kind: str, payload: dict) -> Job:
     session.add(job)
     session.flush()
     return job
+
+
+def enqueue_once(session: Session, kind: str, payload: dict) -> Job | None:
+    """Queue this job unless the same one is already waiting.
+
+    Review accepts one piece at a time, so a filing job per accepted piece
+    would queue hundreds of passes over the same collection to do the work of
+    one.  Returns None when an identical job is already queued.
+    """
+    existing = session.scalar(
+        select(Job).where(Job.kind == kind, Job.state == "queued", Job.payload == payload)
+    )
+    if existing is not None:
+        return None
+    return enqueue(session, kind, payload)
 
 
 def load_average() -> float:
@@ -113,7 +128,77 @@ def scan_collection(session: Session, job: Job) -> str:
     )
 
 
+@handler("materialise")
+def materialise_collection(session: Session, job: Job) -> str:
+    """Bring the library into line with the catalogue.
+
+    Filing was CLI-only, so a piece renamed in review kept its old folder name
+    until somebody remembered to run the command.  The library is authoritative
+    now -- it is the only copy the app reads -- so letting it drift from the
+    catalogue is letting the catalogue lie about where things are.
+    """
+    from .library import materialise
+
+    collection = session.get(Collection, int(job.payload.get("collection_id", 0)))
+    if collection is None:
+        raise ValueError(f"no collection {job.payload.get('collection_id')!r}")
+
+    result = materialise(
+        session, collection,
+        dry_run=False,
+        only_accepted=bool(job.payload.get("only_accepted", False)),
+    )
+    parts = [f"{result.copied} filed"]
+    if result.refiled:
+        parts.append(f"{result.refiled} moved to match new metadata")
+    if result.skipped_unchanged:
+        parts.append(f"{result.skipped_unchanged} already in place")
+    if result.errors:
+        parts.append(f"{len(result.errors)} failed")
+    return ", ".join(parts)
+
+
 # --- the loop -------------------------------------------------------------
+
+#: A job still `running` after this long has lost its worker.  Longer than any
+#: real scan of this library takes -- a full pass over 3,686 files across SMB
+#: is well under an hour -- so a job past it is abandoned, not slow.
+STALE_AFTER = timedelta(hours=4)
+
+#: How many times a job is reclaimed before it is left alone.  A job that kills
+#: its worker three times will kill it again, and a queue that retries for ever
+#: never gets past it.
+MAX_ATTEMPTS = 3
+
+
+def reclaim_stale(session: Session) -> int:
+    """Return abandoned jobs to the queue.  Returns how many were reclaimed.
+
+    A worker killed mid-job leaves it `running` with nothing to notice: no
+    lease, no heartbeat, and the row lock died with the connection.  Without
+    this the job stays running for ever and the collection it was scanning
+    never finishes.
+    """
+    cutoff = _utcnow() - STALE_AFTER
+    reclaimed = 0
+    for job in session.scalars(
+        select(Job).where(
+            Job.state == "running",
+            Job.started_at.is_not(None),
+            Job.started_at < cutoff,
+        )
+    ):
+        if job.attempts >= MAX_ATTEMPTS:
+            job.state = "failed"
+            job.error = f"abandoned {job.attempts} times; not retried again"
+            job.finished_at = _utcnow()
+        else:
+            job.state = "queued"
+            job.started_at = None
+            reclaimed += 1
+    session.flush()
+    return reclaimed
+
 
 def claim_one(session: Session) -> Job | None:
     """Take the oldest queued job, locking it against other workers."""
@@ -136,6 +221,7 @@ def claim_one(session: Session) -> Job | None:
 def run_once() -> bool:
     """Run at most one job.  Returns True when something was done."""
     with session_scope() as session:
+        reclaim_stale(session)
         job = claim_one(session)
         if job is None:
             return False
