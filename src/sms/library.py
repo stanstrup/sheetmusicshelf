@@ -176,8 +176,8 @@ def clear_ingested(session: Session, collection: Collection, root: Path) -> tupl
         managed = Path(file_row.managed_path) if file_row.managed_path else None
         if managed is None or not managed.exists():
             continue
-        if managed.stat().st_size != dropped.stat().st_size:
-            errors.append(f"{file_row.rel_path}: library copy differs in size; left in place")
+        if not _same_file(dropped, managed, file_row.sha256):
+            errors.append(f"{file_row.rel_path}: library copy is not the same file; left in place")
             continue
         try:
             dropped.unlink()
@@ -186,6 +186,26 @@ def clear_ingested(session: Session, collection: Collection, root: Path) -> tupl
         except OSError as exc:
             errors.append(f"{file_row.rel_path}: {exc}")
     return removed, errors
+
+
+def _same_file(dropped: Path, managed: Path, known_hash: str | None) -> bool:
+    """Whether the library copy really is the file about to be deleted.
+
+    Equal size is not equal content, and this decides whether to delete
+    somebody's file.  The hash is used when the scan recorded one; size is the
+    fallback for a scan run with --no-hash.
+    """
+    if dropped.stat().st_size != managed.stat().st_size:
+        return False
+    if not known_hash:
+        return True
+    import hashlib
+
+    digest = hashlib.sha256()
+    with managed.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest() == known_hash
 
 
 def _claimed_by_another(session: Session, target: Path, file_row: SourceFile) -> bool:

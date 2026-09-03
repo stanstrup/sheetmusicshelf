@@ -246,6 +246,38 @@ def ingest(
         console.print(f"[red]{problem}[/red]")
 
 
+def verify(
+    limit: int = typer.Option(50, "--limit", help="How many of each problem to list."),
+) -> None:
+    """Check that the catalogue and the disk still agree.
+
+    Filing and copying are not covered by the database transaction, so a run
+    that fails part-way leaves the rows rolled back and the moves done. This
+    is how you find out.
+    """
+    from .verify import verify as run_verify
+
+    with session_scope() as session:
+        report = run_verify(session, limit=limit)
+
+    counts = "  ".join(f"{n:,} {label}" for label, n in report.checked.items())
+    console.print(f"[dim]{counts}[/dim]\n")
+
+    if report.ok:
+        console.print("[green]the catalogue and the disk agree[/green]")
+        return
+
+    table = Table(header_style="dim")
+    table.add_column("problem", style="red")
+    table.add_column("detail", overflow="fold")
+    table.add_column("remedy", style="dim", overflow="fold")
+    for problem in report.problems:
+        table.add_row(problem.check, problem.detail, problem.remedy)
+    console.print(table)
+    console.print(f"\n[red]{len(report.problems)} problems[/red]")
+    raise typer.Exit(1)
+
+
 @collection_app.command("materialise")
 def collection_materialise(
     collection_id: int = typer.Argument(...),

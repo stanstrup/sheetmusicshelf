@@ -34,6 +34,7 @@ app.add_typer(cli_admin.work_app, name="work")
 app.add_typer(cli_admin.token_app, name="token")
 app.command("worker")(cli_admin.worker)
 app.command("ingest")(cli_admin.ingest)
+app.command("verify")(cli_admin.verify)
 
 ROUTE_STYLE = {"accept": "green", "review": "yellow", "hold": "red"}
 #: Notes that describe normal structure rather than something to look at.
