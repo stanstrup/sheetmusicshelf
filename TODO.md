@@ -100,3 +100,29 @@ _(nothing outstanding — add items here)_
    longer share one file: the pop collection holds the same arrangement twice
    under different numbers, and matching on size alone let the second row point
    at the first row's copy and never get one of its own.
+
+19) ~~merge the works that arrived as one PDF per part~~ — done as a one-off
+   repair, not a feature: which folders hold a single work is a judgement about
+   the music, and it does not belong in the adapter.
+
+   15 works, 118 parts -> 15 files. Order came from the filenames, and was
+   checked against the printed page numbers in the scans: Liszt's first
+   concerto is filed as lispc1_a, liszpc1b, lispc1c ... -- the stem is not even
+   spelled the same way twice -- and the printed numbers run 10, 11-21, 22-28,
+   29-42, 43-52, 53-62, 63-72, 73-82, so the trailing letter is the sequence
+   and sorting on the filename would have been wrong.
+
+   The archive repeats, at the top of each part, the page on which that part
+   begins, so every part opens standalone. Ten such pages were dropped at the
+   seams; Bach's Christmas Oratorio alone would have gained six duplicates.
+   Verified after the fact through the app: the merged Grieg runs title page,
+   Allegro molto moderato, and the Adagio starts exactly at the seam on p21.
+
+   The split versions are gone from the catalogue and from the library, with
+   tombstones so a re-scan cannot bring them back. Nothing under
+   `Z:\Books\Music` was touched -- those scans are the only copy there is.
+
+   Still open: **Tchaikovsky's first concerto** (work 1161, 11 files). It is
+   filed as three overlapping series -- tchpc1a1..a6, b1, b2, c1..c3 -- so
+   "movement 1" names three different files and there is no single order to put
+   them in. Left split rather than guessed at.
