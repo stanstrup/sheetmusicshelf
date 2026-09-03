@@ -139,9 +139,16 @@ def piece_text(
 
 
 def _absolute_path(file_row: SourceFile):
-    from pathlib import Path
+    """Where the file can be read from -- the library copy, or the original.
 
-    return Path(file_row.collection.source_path) / file_row.rel_path
+    Built its own path from the collection's source directory until that
+    directory stopped being mounted, at which point this endpoint returned 410
+    for every piece in the catalogue while the page renderer, using the same
+    rows, worked fine.
+    """
+    from ..library import resolve_source
+
+    return resolve_source(file_row)
 
 
 @router.post(

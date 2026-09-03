@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import Principal, require
 from ..db import get_session
+from ..library import resolve_source
 from ..models import Piece, SourceFile
 from ..schemas import PieceOut
 
@@ -146,9 +147,7 @@ def piece_pdf(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
 
     file_row = piece.source_file
-    path = Path(file_row.managed_path or "") if file_row.managed_path else None
-    if path is None or not path.exists():
-        path = Path(file_row.collection.source_path) / file_row.rel_path
+    path = resolve_source(file_row)
     if not path.exists():
         raise HTTPException(status.HTTP_410_GONE, f"file missing on disk: {file_row.rel_path}")
 

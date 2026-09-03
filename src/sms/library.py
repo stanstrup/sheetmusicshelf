@@ -70,6 +70,20 @@ def safe_component(text: str, fallback: str = "Unknown") -> str:
     return text
 
 
+def resolve_source(file_row: SourceFile) -> Path:
+    """Where this file can actually be read from, right now.
+
+    The library copy when there is one, the original otherwise.  Everything
+    that opens a PDF goes through here: the deployment stopped mounting the
+    source directory once the library became authoritative, so a call site
+    that builds its own path from ``collection.source_path`` finds nothing.
+    """
+    if file_row.managed_path:
+        managed = Path(file_row.managed_path)
+        if managed.exists():
+            return managed
+    return Path(file_row.collection.source_path) / file_row.rel_path
+
 def is_book(file_row: SourceFile, pieces: list[Piece]) -> bool:
     """A file holding several distinct pieces is a book, not a single work."""
     return len(pieces) > 1
@@ -185,12 +199,20 @@ def _claimed_by_another(session: Session, target: Path, file_row: SourceFile) ->
     return other is not None
 
 
-def _refile(current: Path, target: Path, managed_root: Path) -> None:
-    """Move a copy the library already holds to the name it now deserves."""
+def _refile(current: Path, target: Path, managed_root: Path) -> Path:
+    """Move a copy the library already holds to the name it now deserves.
+
+    Returns where the file actually went, which is not always the target: a
+    name already taken gets a suffix.  The caller must record *this* path --
+    recording the intended one pointed the row at another piece's PDF, and
+    renders are cached under the row's own hash, so the wrong pages would have
+    been served from cache indefinitely.
+    """
     target.parent.mkdir(parents=True, exist_ok=True)
     destination = _unique(target) if target.exists() else target
     shutil.move(str(current), str(destination))
     _prune_empty(current.parent, managed_root)
+    return destination
 
 
 def _prune_empty(folder: Path, stop_at: Path) -> None:
@@ -281,8 +303,7 @@ def materialise(
             result.refiled += 1
             if not dry_run:
                 try:
-                    _refile(current, target, managed_root)
-                    file_row.managed_path = str(target)
+                    file_row.managed_path = str(_refile(current, target, managed_root))
                 except OSError as exc:
                     result.errors.append(f"{file_row.rel_path}: {exc}")
             continue

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import Principal, require
 from ..db import get_session
+from ..library import resolve_source
 from ..models import Piece, SourceFile
 from ..render import THUMB_WIDTH, RenderUnavailable, render_page
 
@@ -25,13 +26,7 @@ router = APIRouter(tags=["pages"])
 CACHE_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 
-def resolve_source(file_row: SourceFile) -> Path:
-    """Prefer the managed copy when one exists, else the original."""
-    if file_row.managed_path:
-        managed = Path(file_row.managed_path)
-        if managed.exists():
-            return managed
-    return Path(file_row.collection.source_path) / file_row.rel_path
+
 
 
 def _cache_key(file_row: SourceFile) -> str:
