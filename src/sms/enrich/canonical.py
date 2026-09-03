@@ -33,6 +33,9 @@ MUSICBRAINZ_API = "https://musicbrainz.org/ws/2"
 
 #: MusicBrainz asks for no more than one request a second from a named client.
 MUSICBRAINZ_PAUSE = 1.3
+#: IMSLP is a small site. Four variant queries fired back to back is what
+#: produced its 503s, not the interval between works.
+IMSLP_PAUSE = 0.6
 
 _NON_WORD = re.compile(r"[^\w]+", re.UNICODE)
 
@@ -98,6 +101,8 @@ def find_imslp(
     last = surname(composer_name)
     attempts = failures = 0
     for variant in catalogue_variants(system, number, suffix):
+        if attempts:
+            time.sleep(IMSLP_PAUSE)
         attempts += 1
         response = _get(client, IMSLP_API, params={
             "action": "query", "format": "json", "list": "search",
@@ -117,7 +122,7 @@ def find_imslp(
             slug = title.replace(" ", "_")
             return title, f"https://imslp.org/wiki/{slug}"
     if failures == attempts:
-        raise LookupUnavailable(f"every IMSLP query failed ({failures})")
+        raise LookupUnavailable(f"IMSLP: every query failed ({failures})")
     return None
 
 
@@ -164,7 +169,7 @@ def find_musicbrainz(
                     continue
             return work.get("id", ""), title
     if failures == attempts:
-        raise LookupUnavailable(f"every MusicBrainz query failed ({failures})")
+        raise LookupUnavailable(f"MusicBrainz: every query failed ({failures})")
     return None
 
 

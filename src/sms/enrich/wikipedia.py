@@ -143,7 +143,11 @@ def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
 
         if response.status_code in RETRY_STATUSES:
             if attempt == MAX_RETRIES - 1:
-                raise LookupUnavailable(f"{response.status_code} after {MAX_RETRIES} tries")
+                # Name the host: "503 after 4 tries" does not say which of the
+                # three services gave up, which is the first thing you need.
+                raise LookupUnavailable(
+                    f"{httpx.URL(url).host}: {response.status_code} after {MAX_RETRIES} tries"
+                )
             # Honour Retry-After when the server sets it.
             wait = response.headers.get("retry-after")
             try:
