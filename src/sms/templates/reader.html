@@ -11,13 +11,36 @@
   </div>
   <div class="tools">
     <span class="progress" id="progress">1 / {{ pages|length }}</span>
+    <button type="button" class="ink-toggle" data-ink="toggle" aria-pressed="false"
+            title="Annotate">Ink</button>
     <a class="spread-toggle" href="?spread={{ 0 if spread else 1 }}">{{ "Single" if spread else "Two-up" }}</a>
   </div>
 </header>
 {% endblock %}
 
 {% block content %}
-<div class="pages {{ 'two-up' if spread }}" id="pages" tabindex="-1">
+<div class="inkbar" id="inkbar">
+  <div class="tools">
+    <button type="button" data-ink="tool" data-tool="pen" class="on" title="Pen">Pen</button>
+    <button type="button" data-ink="tool" data-tool="highlighter" title="Highlighter">Marker</button>
+    <button type="button" data-ink="tool" data-tool="eraser" title="Erase whole marks">Erase</button>
+  </div>
+  <div class="swatches">
+    {% for colour, label in [("#c0392b", "red"), ("#1f6feb", "blue"), ("#1f7a4d", "green"), ("#111111", "black")] %}
+      <button type="button" data-ink="color" data-color="{{ colour }}"
+              class="swatch{{ ' on' if loop.first }}" style="--swatch: {{ colour }}"
+              aria-label="{{ label }}"></button>
+    {% endfor %}
+  </div>
+  <div class="tools">
+    <button type="button" data-ink="undo" title="Undo the last mark on this page">Undo</button>
+    <button type="button" data-ink="clear" title="Clear this page">Clear</button>
+  </div>
+  <span class="inkstatus" id="inkstatus"></span>
+</div>
+
+<div class="pages {{ 'two-up' if spread }}" id="pages" tabindex="-1"
+     data-piece="{{ piece.id }}" data-can-write="{{ 1 if viewer.can('catalog:write') else 0 }}">
   {% for n in pages %}
     <figure class="page" data-page="{{ n }}">
       <img src="/api/v1/pieces/{{ piece.id }}/pages/{{ n }}?width=1200"
@@ -95,8 +118,10 @@
   });
 
   // Tap the outer thirds to turn; the middle toggles the chrome, so the whole
-  // screen can be score while you are actually playing.
+  // screen can be score while you are actually playing. Suspended while
+  // annotating, or every stroke would also turn the page.
   pagesEl.addEventListener("click", function (event) {
+    if (pagesEl.classList.contains("inking")) { return; }
     var x = event.clientX / window.innerWidth;
     if (x < 0.28) { go(-1); }
     else if (x > 0.72) { go(1); }
@@ -106,4 +131,5 @@
   recompute();
 }());
 </script>
+<script src="/static/annotate.js?v={{ asset_version }}"></script>
 {% endblock %}

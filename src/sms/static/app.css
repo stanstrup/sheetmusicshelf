@@ -517,3 +517,46 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
 }
 .personal textarea { resize: vertical; }
 .personal .button { cursor: pointer; border: none; font: inherit; font-size: 14px; }
+
+/* --- annotation --------------------------------------------------------- */
+
+.ink-toggle {
+  font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  background: transparent; color: #b9c2d2; border: 1px solid #2b323f;
+  border-radius: 4px; padding: 3px 8px;
+}
+.ink-toggle[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.inkbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: none; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 9px 16px; padding-bottom: max(9px, env(safe-area-inset-bottom));
+  background: rgba(13, 15, 19, .95); border-top: 1px solid #262c36;
+}
+.inkbar.open { display: flex; }
+.inkbar .tools { display: flex; gap: 6px; }
+.inkbar button {
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  background: transparent; color: #b9c2d2;
+  border: 1px solid #2b323f; border-radius: 4px; padding: 4px 10px;
+}
+.inkbar button.on { background: #2b323f; color: #fff; }
+.swatches { display: flex; gap: 6px; }
+.swatch {
+  width: 24px; height: 24px; padding: 0; border-radius: 50%;
+  background: var(--swatch); border: 2px solid transparent;
+}
+.swatch.on { border-color: #fff; }
+.inkstatus { margin-left: auto; font-size: 12px; color: #8b94a5; }
+.inkstatus.bad { color: var(--alert); }
+
+/* The canvas sits exactly over the page image. */
+.page { position: relative; }
+.page canvas.ink {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  pointer-events: none; touch-action: none;
+}
+/* Only while annotating does the canvas take input -- otherwise it would eat
+   the taps that turn pages. */
+.pages.inking canvas.ink { pointer-events: auto; cursor: crosshair; }
+.pages.inking { touch-action: pan-y; }

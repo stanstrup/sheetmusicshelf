@@ -388,7 +388,17 @@ class Annotation(Base):
     """
 
     __tablename__ = "annotation"
-    __table_args__ = (Index("ix_annotation_piece_page", "piece_id", "page"),)
+    __table_args__ = (
+        Index("ix_annotation_piece_page", "piece_id", "page"),
+        # One layer per page per person. NULLS NOT DISTINCT because an
+        # unauthenticated (development) user has no id, and without it Postgres
+        # would happily store a second row for the same page.
+        UniqueConstraint(
+            "piece_id", "user_id", "page",
+            name="uq_annotation_page",
+            postgresql_nulls_not_distinct=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     piece_id: Mapped[int] = mapped_column(ForeignKey("piece.id", ondelete="CASCADE"), index=True)
