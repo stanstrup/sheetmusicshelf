@@ -201,6 +201,7 @@ def enrich(session: Session, work: Work, *, force: bool = False) -> tuple[bool, 
         changed.append(f"composed {links.year_note or links.year}")
     if links.musicbrainz_id and (force or not work.musicbrainz_id):
         work.musicbrainz_id = links.musicbrainz_id
+        work.musicbrainz_title = links.musicbrainz_title or None
         changed.append("MusicBrainz")
 
     work.match_note = "; ".join(links.notes) or (

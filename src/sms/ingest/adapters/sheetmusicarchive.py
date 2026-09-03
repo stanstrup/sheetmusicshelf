@@ -115,6 +115,62 @@ NO_OPUS_COMPOSERS = {
 BOOK_FORMS = {"Prelude", "Etude", "Image", "Prelude and Fugue"}
 
 
+#: Folders holding ONE work split across files, mapped to what to call it.
+#: A value of "" means the form name from :data:`FORM_FOLDERS` already says it.
+#:
+#: The trailing number in these folders is a movement, not a piece number:
+#: ``grieg/con_amin/conamin2.pdf`` is the second movement of the A minor
+#: concerto, not a second concerto.  Nothing in the file layout distinguishes
+#: this from ``chopin/preludes/pre28_2.pdf``, which really is a separate
+#: prelude -- both are one stem and a number -- so the folders are named here
+#: rather than guessed at.  Getting it wrong in either direction is visible:
+#: one work becomes twenty-seven, or twenty-four become one.
+SINGLE_WORK_FOLDERS: dict[str, str] = {
+    "chilcor": "",          # Children's Corner, 6 movements
+    "chrisorat": "",        # Christmas Oratorio, one work in parts
+    "con_amin": "Concerto in A minor",
+    "davidbun": "",         # Davidsbundlertanze, Op. 6
+    "fant_c": "Fantasy in C",
+    "gb_vars": "",          # Goldberg Variations
+    "kreis": "",            # Kreisleriana, Op. 16
+    "magflute": "",         # The Magic Flute, by act and number
+    "pag_vars": "",         # Paganini Variations, Op. 35, two books
+    "pc_26": "Piano Concerto no. 26",
+    "piancon1": "Piano Concerto no. 1",
+    "piancon2": "Piano Concerto no. 2",
+    "suite_d": "Suite in D",
+    "viocon77": "Violin Concerto",
+}
+
+#: The same thing keyed on the filename, for works that sit directly in a
+#: composer folder and so have no folder of their own to name them.
+SINGLE_WORK_STEMS: tuple[tuple[str, str], ...] = (
+    ("prchofg", "Prelude, Choral and Fugue"),
+)
+
+#: A movement number is only read from a stem that *ends* in digits.  Liszt's
+#: "lispc1_a" ends in a letter and its "1" is the concerto, not the movement;
+#: reading it as one would number every movement 1.
+_ENDS_IN_NUMBER = re.compile(r"(\d{1,3})$")
+
+
+def single_work_title(folder: str, stem: str, form: str | None) -> str | None:
+    """What to call the one work this file belongs to, or None."""
+    named = SINGLE_WORK_FOLDERS.get(folder.strip().lower())
+    if named is not None:
+        return named or form
+    lowered = stem.strip().lower()
+    for prefix, title in SINGLE_WORK_STEMS:
+        if lowered.startswith(prefix):
+            return title
+    return None
+
+
+def movement_from_stem(stem: str) -> int | None:
+    match = _ENDS_IN_NUMBER.search(stem.strip())
+    return int(match.group(1)) if match else None
+
+
 def form_from_folder(folder: str) -> str | None:
     return FORM_FOLDERS.get(folder.strip().lower())
 
@@ -215,6 +271,10 @@ class SheetMusicArchiveAdapter(Adapter):
     W_FORM_PREFIX = 0.62
     W_TITLE = 0.62
     W_STEM_TITLE = 0.55
+    #: A named single-work folder is a stronger reading than an inferred form:
+    #: the folder was identified by hand, so it does not have to be guessed.
+    W_SINGLE_WORK = 0.80
+    W_MOVEMENT = 0.72
     W_CATALOG = 0.60
     W_INSTRUMENT = 0.68
 
@@ -282,7 +342,25 @@ class SheetMusicArchiveAdapter(Adapter):
 
         form = folder_form or stem_form
         composer_name = record.canonical if record is not None else None
-        title = build_title(form, opus, number, composer_name)
+
+        # One work spread over several files: every file gets the *same* title,
+        # which is what folds them into a single work downstream.
+        one_work = single_work_title(group_folder, signals.stem, form)
+        if one_work:
+            piece.add("title", one_work, "single_work_folder", self.W_SINGLE_WORK)
+            movement = movement_from_stem(signals.stem)
+            if movement is not None:
+                piece.add("movement_no", movement, "filename_movement", self.W_MOVEMENT)
+                piece.notes.append(f"movement {movement} of a work split over several files")
+            else:
+                piece.notes.append("part of a work split over several files")
+            # No catalogue claim here.  The stem's number is a movement, and
+            # the opus it looks like is often not the work's: "schdb2&3" is
+            # the second and third dances, not opus 3.
+            opus = number = None
+            title = None
+        else:
+            title = build_title(form, opus, number, composer_name)
         if title:
             # Agreement between the two form signals is what lifts this above a
             # single guess; alone, it stays firmly in review.

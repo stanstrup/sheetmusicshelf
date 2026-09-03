@@ -12,7 +12,9 @@
         {% if catalogue %}&middot; {{ catalogue }}{% endif %}
         {% if work.music_key %}&middot; {{ work.music_key }}{% endif %}
         {% if work.year %}&middot; composed {{ work.year_note or work.year }}{% endif %}
-        &middot; {{ pieces|length }} {{ "copy" if pieces|length == 1 else "copies" }} in the library
+        &middot; {{ pieces|length }}
+        {%- if pieces|selectattr("movement")|list|length > 1 %} movements
+        {%- else %} {{ "copy" if pieces|length == 1 else "copies" }}{% endif %} in the library
       </p>
     </div>
   </header>
@@ -33,7 +35,7 @@
         {% if work.musicbrainz_id %}
           <li>
             <a href="https://musicbrainz.org/work/{{ work.musicbrainz_id }}" rel="noopener">
-              {{ work.musicbrainz_id }}</a>
+              {{ work.musicbrainz_title or work.musicbrainz_id }}</a>
             <span class="muted">MusicBrainz</span>
           </li>
         {% endif %}
@@ -110,6 +112,7 @@
               <form method="post" action="/work/{{ work.id }}/link">
                 <input type="hidden" name="action" value="musicbrainz">
                 <input type="hidden" name="mbid" value="{{ hit.id }}">
+                <input type="hidden" name="mbtitle" value="{{ hit.title }}">
                 <span class="cand">
                   <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>
                   {% if hit.credits %}<span class="by">{{ hit.credits }}</span>{% endif %}
@@ -127,12 +130,26 @@
   </section>
 
   {% if pieces %}
+    {# A work whose movements sit in separate files is not the same thing as
+       a work held in several editions, and calling both "copies" hides which
+       one the reader is looking at. #}
+    {% set split = pieces|selectattr("movement")|list|length > 1 %}
     <section class="canonical">
-      <h2>Copies in the library</h2>
+      <h2>{{ "Movements in the library" if split else "Copies in the library" }}</h2>
       <ul class="linklist">
         {% for piece in pieces %}
           <li>
-            <a href="/piece/{{ piece.id }}">{{ piece.title or "Untitled" }}</a>
+            {# Every movement carries the work's own title, so repeating it
+               down the list says nothing.  The movement number does. #}
+            <a href="/piece/{{ piece.id }}">
+              {%- if piece.movement and piece.title == work.title -%}
+                Movement {{ piece.movement }}
+              {%- elif piece.movement -%}
+                {{ piece.movement }}.&nbsp;{{ piece.title or "Untitled" }}
+              {%- else -%}
+                {{ piece.title or "Untitled" }}
+              {%- endif -%}
+            </a>
             <span class="muted">{{ piece.source_file.collection.name }} &middot; {{ piece.page_count }}&thinsp;pp</span>
           </li>
         {% endfor %}

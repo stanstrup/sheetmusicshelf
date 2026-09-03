@@ -337,8 +337,11 @@ REVIEW_FIELDS = (
 )
 
 
-def _next_for_review(session: Session, collection_id: int | None, route: str | None) -> Piece | None:
-    """Least confident first: the worst guesses are worth a human eye soonest."""
+def _review_queue(session: Session, collection_id: int | None, route: str | None):
+    """The pending queue, least confident first.
+
+    Worst guesses first: they are where a human eye changes the most.
+    """
     query = (
         select(Piece)
         .join(SourceFile, Piece.source_file_id == SourceFile.id)
@@ -347,7 +350,17 @@ def _next_for_review(session: Session, collection_id: int | None, route: str | N
     query = query.where(Piece.route == route) if route else query.where(Piece.route.in_(["review", "hold"]))
     if collection_id is not None:
         query = query.where(SourceFile.collection_id == collection_id)
-    return session.scalar(query.order_by(Piece.confidence.asc(), Piece.id.asc()).limit(1))
+    return query.order_by(Piece.confidence.asc(), Piece.id.asc())
+
+
+def _next_for_review(
+    session: Session,
+    collection_id: int | None,
+    route: str | None,
+    offset: int = 0,
+) -> Piece | None:
+    query = _review_queue(session, collection_id, route)
+    return session.scalar(query.limit(1).offset(offset))
 
 
 @router.get("/review", response_class=HTMLResponse)
@@ -357,13 +370,15 @@ def review(
     collection: int | None = None,
     route: str = "",
     piece: int | None = None,
+    offset: int = 0,
 ) -> Response:
     viewer = _viewer(request, session)
     # Reviewing a specific piece beats the queue order: arriving here from a
     # piece you are looking at should review *that* piece.
     item = session.get(Piece, piece) if piece else None
+    offset = max(offset, 0)
     if item is None:
-        item = _next_for_review(session, collection, route or None)
+        item = _next_for_review(session, collection, route or None, offset)
 
     outstanding_query = (
         select(func.count())
@@ -413,7 +428,7 @@ def review(
         {
             "viewer": viewer, "item": item, "file": file_row, "fields": fields,
             "outstanding": outstanding, "route": route, "ambiguous_order": ambiguous,
-            "notes": notes,
+            "notes": notes, "offset": offset, "collection_id": collection,
             # True when a specific piece was asked for, rather than the queue.
             "single": piece is not None,
             "collection": session.get(Collection, collection) if collection else None,
@@ -545,8 +560,14 @@ def work_detail(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
 
     composer = session.get(Composer, work.composer_id) if work.composer_id else None
+    # Movement order first: for a work split over several files the movement
+    # number is the reading order, and id order is only the order the files
+    # happened to be scanned in.
     pieces = list(
-        session.scalars(select(Piece).where(Piece.work_id == work.id).order_by(Piece.id))
+        session.scalars(
+            select(Piece).where(Piece.work_id == work.id)
+            .order_by(Piece.movement.nulls_last(), Piece.id)
+        )
     )
 
     results = {"imslp": [], "musicbrainz": []}
@@ -599,12 +620,14 @@ async def work_link(
         work.match_note = "IMSLP chosen by hand"
     elif action == "musicbrainz":
         work.musicbrainz_id = (form.get("mbid") or "").strip() or None
+        work.musicbrainz_title = (form.get("mbtitle") or "").strip() or None
         work.confirmed = True
         work.match_note = "MusicBrainz chosen by hand"
     elif action == "confirm":
         work.confirmed = True
     elif action == "clear":
-        work.imslp_url = work.imslp_title = work.musicbrainz_id = None
+        work.imslp_url = work.imslp_title = None
+        work.musicbrainz_id = work.musicbrainz_title = None
         work.confirmed = False
         work.match_note = "links cleared by hand"
 

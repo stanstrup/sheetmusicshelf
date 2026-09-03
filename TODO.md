@@ -1,18 +1,5 @@
 # TODO
 
-1) automatically put the title in the search page in teh canonical sources page.
-2) give an indicator that are search is in progress (canonical sources page)
-3) I'd like to pull composition year for each composition from somewhere.
-4) why is http://localhost:8014/work/4 not linked to musicbrainz?
-5) not clear what happens on "skip" and "Not music" in the review dialog.
-6) <- -> arrows in teh review dialog would be nice
-7) review tab should also have a delete button
-8) the email used for musicbrainz ID should be configurate.
-9) didn't we say that it should import to its own folder? I don't see a folder with a copy of the sheet music and I don't see a docker compose file...?
-10) some of the things from Z:\Books\Music\The Sheet Music Archive\ is a mess. e.g. Z:\Books\Music\The Sheet Music Archive\grieg\con_amin where the concert is splity over 3 files.
-
-
-
 _(nothing outstanding — add items here)_
 
 ## Open questions for you
@@ -22,9 +9,9 @@ _(nothing outstanding — add items here)_
   needed any more: offline was ruled out, and annotation now works in the
   browser, which were its two justifications. Say the word if you want it
   anyway and I will write it as unverified source for you to build.
-- **Managed tree** — the copier has only been run against a scratch directory,
-  never against `Z:\Books\SheetMusic`. Run
-  `sms collection materialise <id>` (dry run) when you want to see the real plan.
+- **Which collection to materialise next** — only the Mozart set has been
+  copied into `Z:\Books\SheetMusic`, because it is the only one with accepted
+  pieces. The archive and pop collections copy when their pieces are reviewed.
 
 ## Done
 
@@ -63,3 +50,37 @@ _(nothing outstanding — add items here)_
    `/work/<id>` shows the current links with confirm/clear, and searches IMSLP
    and MusicBrainz so you can pick one by hand. A hand-picked link is marked
    confirmed and automatic runs leave it alone.
+
+11) ~~say what "skip" and "Not music" do~~ — the review dialog now spells out
+   all four actions, including what survives a re-scan and what happens to the
+   PDF (nothing, in every case).
+12) ~~arrows in the review dialog~~ — move through the queue without deciding,
+   by the arrows or the left/right keys. Ignored while typing in a field.
+13) ~~a delete button in the review tab~~ — same tombstone as the piece page, so
+   a re-scan cannot bring the entry back.
+14) ~~the MusicBrainz contact should be configurable~~ — `SMS_CONTACT`, and it
+   has no default: no lookup runs at all until it is set, which is what stops
+   the service being hit anonymously.
+15) ~~list the MusicBrainz name in the source list~~ — the work stores the title
+   MusicBrainz uses, so the link reads like the IMSLP one instead of showing a
+   bare MBID.
+16) ~~import to its own folder, and a compose file~~ — `Z:\Books\SheetMusic`
+   now holds the 76 accepted Mozart pieces (67 MB, copies; the originals are
+   untouched). `sheetmusicshelf.yml` and its two env files are in
+   `Z:\docker\compose`, with the build context in `Z:\docker\build`. Nothing
+   is started: fill in the secrets and run
+   `docker compose -f sheetmusicshelf.yml up -d`.
+17) ~~a work split over several files~~ — `grieg/con_amin` is one concerto in
+   three movements again, not three concertos. Fourteen folders that name a
+   single work are listed by hand in the adapter, because nothing in the file
+   layout separates them from `chopin/preludes`, which really is 24 preludes:
+   both are one stem and a number. In those folders the trailing number is
+   read as a movement.
+
+   This turned up a deeper fault. Candidates were only ever added, never
+   retired, so a value an adapter had been *fixed* to stop emitting went on
+   arguing its case for ever and re-scanning with the fix changed nothing.
+   Candidates now record which adapter made them, an adapter's own superseded
+   readings are withdrawn on a re-scan, and a field whose last candidate is
+   gone is cleared from the row instead of standing. Human decisions and
+   anything posted through the curation API are untouched.

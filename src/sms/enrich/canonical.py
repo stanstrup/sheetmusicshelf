@@ -43,6 +43,7 @@ class CanonicalLinks:
     imslp_title: str = ""
     imslp_url: str = ""
     musicbrainz_id: str = ""
+    musicbrainz_title: str = ""
     year: int | None = None
     year_note: str = ""
     notes: list[str] = field(default_factory=list)
@@ -291,7 +292,7 @@ def lookup(
         except httpx.HTTPError as exc:
             raise LookupUnavailable(str(exc)) from exc
         if found:
-            links.musicbrainz_id = found[0]
+            links.musicbrainz_id, links.musicbrainz_title = found
         else:
             links.notes.append("no MusicBrainz work cites this catalogue number")
 

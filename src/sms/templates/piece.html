@@ -69,7 +69,7 @@
           {% if work.musicbrainz_id %}
             <li>
               <a href="https://musicbrainz.org/work/{{ work.musicbrainz_id }}" rel="noopener">MusicBrainz</a>
-              <span class="muted">{{ work.musicbrainz_id[:8] }}&hellip;</span>
+              <span class="muted">{{ work.musicbrainz_title or work.musicbrainz_id }}</span>
             </li>
           {% endif %}
         </ul>

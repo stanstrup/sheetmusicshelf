@@ -122,6 +122,9 @@ class Work(Base):
     # Links belong to the work, not to each copy of it: the six editions of
     # K. 283 in this library are one piece of music with one IMSLP page.
     musicbrainz_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    #: What MusicBrainz calls it. A bare MBID tells the reader nothing about
+    #: whether the link is right, which is the whole point of showing it.
+    musicbrainz_title: Mapped[str | None] = mapped_column(Text)
     imslp_title: Mapped[str | None] = mapped_column(Text)
     imslp_url: Mapped[str | None] = mapped_column(Text)
     wikidata_id: Mapped[str | None] = mapped_column(String(24))
@@ -239,6 +242,9 @@ class Piece(Base):
     catalog_sub: Mapped[int | None] = mapped_column(Integer)
     music_key: Mapped[str | None] = mapped_column(String(32), index=True)
     form: Mapped[str | None] = mapped_column(String(80), index=True)
+    #: Which movement of its work this file holds, when the work is split over
+    #: several files.  None for the ordinary case of one file, one piece.
+    movement: Mapped[int | None] = mapped_column(Integer)
     arranger: Mapped[str | None] = mapped_column(String(200))
     edition: Mapped[str | None] = mapped_column(String(200))
     publisher: Mapped[str | None] = mapped_column(String(200))
@@ -302,6 +308,11 @@ class FieldCandidate(Base):
     field: Mapped[str] = mapped_column(String(40))
     value: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(60))
+    #: The adapter that made this reading, or None for anything else -- a
+    #: person, or an agent posting through the curation API.  Knowing who
+    #: said it is what lets a corrected adapter withdraw its own old claims
+    #: without touching anybody else's.
+    adapter: Mapped[str | None] = mapped_column(String(40), index=True)
     weight: Mapped[float] = mapped_column(Float, default=0.5)
     note: Mapped[str | None] = mapped_column(Text)
     #: True once a person (or an agent acting for one) chose this value.

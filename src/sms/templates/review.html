@@ -19,6 +19,19 @@
         <a class="{{ 'on' if route == value }}"
            href="/review?{% if collection %}collection={{ collection.id }}&{% endif %}route={{ value }}">{{ label }}</a>
       {% endfor %}
+      {% if not single %}
+        {# Move through the queue without deciding anything -- useful for
+           finding a piece you can actually judge before committing to one. #}
+        <span class="queue-nav">
+          <a class="{{ 'off' if offset == 0 }}" id="prev-item"
+             href="/review?route={{ route }}{% if collection_id %}&collection={{ collection_id }}{% endif %}&offset={{ offset - 1 if offset else 0 }}"
+             title="Previous (left arrow)">&larr;</a>
+          <span class="muted">{{ offset + 1 }}</span>
+          <a id="next-item"
+             href="/review?route={{ route }}{% if collection_id %}&collection={{ collection_id }}{% endif %}&offset={{ offset + 1 }}"
+             title="Next (right arrow)">&rarr;</a>
+        </span>
+      {% endif %}
     </nav>
   </header>
 
@@ -93,10 +106,26 @@
         <button class="button ghost" name="action" value="skip">Skip</button>
         <button class="button danger" name="action" value="reject">Not music</button>
       </div>
-      <p class="hint muted">
-        Accepting records your values as decisions &mdash; no later signal can
-        overwrite them, and a re-scan will not disturb them.
-      </p>
+      <dl class="hint muted what-happens">
+        <dt>Accept</dt>
+        <dd>Records these values as decisions. No later signal can outvote them
+          and a re-scan will not disturb them. The piece leaves the queue.</dd>
+        <dt>Skip</dt>
+        <dd>Changes nothing. The piece stays in the queue and comes round
+          again, just behind the rest.</dd>
+        <dt>Not music</dt>
+        <dd>For a cover page, a licence, a scan of something that is not music.
+          The entry is set aside and excluded from the catalogue, but kept, so
+          you can find it again. The PDF is untouched.</dd>
+        <dt>Delete</dt>
+        <dd>Removes the entry for good and remembers the page range so a
+          re-scan cannot recreate it. The PDF is untouched.</dd>
+      </dl>
+    </form>
+
+    <form class="review-delete" method="post" action="/piece/{{ item.id }}/delete"
+          onsubmit="return confirm('Delete this catalogue entry for good? The PDF on disk is not touched.');">
+      <button class="button danger ghost" type="submit">Delete entry</button>
     </form>
 
   </div>

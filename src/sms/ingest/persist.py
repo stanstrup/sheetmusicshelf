@@ -1,10 +1,11 @@
 """Committing scored proposals to the catalogue.
 
 The contract that makes ingest safe to re-run: **a human decision permanently
-outranks a machine one.**  Every signal, past and present, is kept as a
-:class:`FieldCandidate` row, and re-ingesting a collection with a corrected
-adapter adds candidates and recomputes confidences without ever overwriting a
-value a person accepted.
+outranks a machine one.**  Re-ingesting a collection with a corrected adapter
+recomputes confidences without ever overwriting a value a person accepted.
+
+Machine readings, unlike decisions, are retired when the adapter that made
+them stops making them -- see :func:`_retire_superseded`.
 """
 
 from __future__ import annotations
@@ -25,6 +26,10 @@ from .scoring import route as route_for
 #: any signal weight, so an accepted value can never be argued down.
 HUMAN_WEIGHT = 1.0
 
+#: Denormalised columns that hold a number rather than text.  Candidates are
+#: stored as strings, so these need converting on the way onto the row.
+_INT_COLUMNS = {"movement"}
+
 #: Fields copied onto the piece row for browsing and filtering.
 DENORMALISED = {
     "composer": "composer_name",
@@ -32,6 +37,7 @@ DENORMALISED = {
     "catalog": "catalog_display",
     "key": "music_key",
     "form": "form",
+    "movement_no": "movement",
     "arranger": "arranger",
     "edition": "edition",
     "publisher": "publisher",
@@ -132,6 +138,7 @@ def add_candidate(
     source: str,
     weight: float,
     note: str | None = None,
+    adapter: str | None = None,
 ) -> FieldCandidate:
     """Record one opinion, without disturbing any that already exist."""
     existing = session.scalar(
@@ -146,13 +153,62 @@ def add_candidate(
         existing.weight = max(existing.weight, weight)
         if note:
             existing.note = note
+        if adapter:
+            existing.adapter = adapter
         return existing
     candidate = FieldCandidate(
-        piece_id=piece.id, field=field, value=value, source=source, weight=weight, note=note
+        piece_id=piece.id, field=field, value=value, source=source,
+        weight=weight, note=note, adapter=adapter,
     )
     session.add(candidate)
     session.flush()
     return candidate
+
+
+def _retire_superseded(
+    session: Session, piece: Piece, adapter: str, current: list
+) -> None:
+    """Withdraw this adapter's earlier readings that it no longer makes.
+
+    Keeping every signal for ever sounds like the conservative choice, but it
+    is the opposite: a value an adapter has been *fixed* to stop emitting goes
+    on arguing its case for the life of the catalogue, so re-scanning with the
+    fix changes nothing.  Debussy's ``chilcor1.pdf`` held on to its stale
+    "Children's Corner, no. 1" for exactly this reason after the adapter
+    learned that the folder holds a single work.
+
+    A field the adapter has stopped claiming altogether is withdrawn on the
+    same principle: Schumann's Kreisleriana was eight works rather than one
+    because a stale "Op. 16 no. 3" outlived the reading that produced it, and
+    works are grouped by catalogue number before title.
+
+    Scoped to the adapter that is speaking, so a person's decision and an
+    agent's suggestion through the curation API both survive a re-scan --
+    which is what keeps the promise at the top of this module intact.
+    """
+    if not adapter:
+        return
+    still = {(c.field, c.source, str(c.value)) for c in current}
+    for row in session.scalars(
+        select(FieldCandidate).where(
+            FieldCandidate.piece_id == piece.id,
+            FieldCandidate.adapter == adapter,
+            FieldCandidate.accepted.is_(False),
+        )
+    ):
+        if is_superseded((row.field, row.source, row.value), still):
+            session.delete(row)
+    session.flush()
+
+
+def is_superseded(reading: tuple[str, str, str], still_made: set[tuple[str, str, str]]) -> bool:
+    """Whether a stored reading is one this run no longer makes.
+
+    A reading is (field, source, value): the same source changing its mind
+    about a value supersedes the old one, and a field the adapter has stopped
+    claiming at all is withdrawn entirely.
+    """
+    return reading not in still_made
 
 
 def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floor: float) -> Piece:
@@ -209,9 +265,15 @@ def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floo
     # re-derived each time.
     piece.notes_machine = list(piece.notes_ingest or []) + notes
 
+    # The row is a projection of the candidates and nothing more, so a field
+    # whose last candidate has gone is cleared rather than left standing.
+    # Otherwise an adapter can withdraw a reading and the value it produced
+    # still shows in the catalogue, and still groups works by it.
     for field, column in DENORMALISED.items():
-        if field in resolved_values:
-            setattr(piece, column, resolved_values[field] or None)
+        value = resolved_values.get(field) or None
+        if value is not None and column in _INT_COLUMNS:
+            value = int(value) if str(value).lstrip("-").isdigit() else None
+        setattr(piece, column, value)
 
     _split_catalog(piece)
     return piece
@@ -256,7 +318,9 @@ def commit_proposal(
             add_candidate(
                 session, piece, candidate.field, str(candidate.value),
                 candidate.source, candidate.weight, candidate.note or None,
+                adapter=proposal.adapter,
             )
+        _retire_superseded(session, piece, proposal.adapter, proposed.candidates)
         recompute(
             session, piece,
             auto_accept=collection.auto_accept,
