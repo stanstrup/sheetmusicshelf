@@ -224,6 +224,29 @@ class Candidate:
     url: str = ""
     id: str = ""
     disambiguation: str = ""
+    #: Who wrote it. Without this a search for "Chiquitita" is five identical
+    #: rows reading "Chiquitita - Song", and no way to tell them apart.
+    credits: str = ""
+
+
+#: Relation types that name a person responsible for the music itself.
+CREDIT_RELATIONS = {"composer", "writer", "lyricist", "librettist", "arranger"}
+
+
+def credited_people(work: dict, limit: int = 3) -> str:
+    """Names from a MusicBrainz work's relations, in the order given.
+
+    Work search results already carry these, so no extra request is needed --
+    they were simply being thrown away.
+    """
+    seen: list[str] = []
+    for relation in work.get("relations", []):
+        if relation.get("type") not in CREDIT_RELATIONS:
+            continue
+        name = (relation.get("artist") or {}).get("name")
+        if name and name not in seen:
+            seen.append(name)
+    return ", ".join(seen[:limit]) + (" and others" if len(seen) > limit else "")
 
 
 def search(
@@ -301,14 +324,18 @@ def search(
             if response.status_code != 200:
                 continue
             for work in response.json().get("works", []):
-                # Type and attributes are what tell one "Allegro" from another.
+                # Type, language and attributes tell one "Allegro" from another.
                 extra = [work.get("disambiguation") or "", work.get("type") or ""]
                 extra += [str(a.get("value") or "") for a in work.get("attributes", [])]
+                language = work.get("language") or ""
+                if language:
+                    extra.append(language)
                 musicbrainz.append(
                     Candidate(
                         title=work.get("title") or "",
                         id=work.get("id") or "",
                         disambiguation=" · ".join(x for x in extra if x),
+                        credits=credited_people(work),
                     )
                 )
             if musicbrainz:

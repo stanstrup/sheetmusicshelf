@@ -105,8 +105,11 @@
               <form method="post" action="/work/{{ work.id }}/link">
                 <input type="hidden" name="action" value="musicbrainz">
                 <input type="hidden" name="mbid" value="{{ hit.id }}">
-                <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>
-                {% if hit.disambiguation %}<span class="muted">{{ hit.disambiguation }}</span>{% endif %}
+                <span class="cand">
+                  <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>
+                  {% if hit.credits %}<span class="by">{{ hit.credits }}</span>{% endif %}
+                  {% if hit.disambiguation %}<span class="muted">{{ hit.disambiguation }}</span>{% endif %}
+                </span>
                 <button class="button small" type="submit">Use this</button>
               </form>
             </li>
