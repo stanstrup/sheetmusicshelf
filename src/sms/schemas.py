@@ -73,6 +73,23 @@ class QueueItem(BaseModel):
     conflicted_fields: list[str] = Field(description="Fields whose signals disagree.")
 
 
+class RetractionIn(BaseModel):
+    """Withdraw a proposal you made earlier.
+
+    Only your own unaccepted proposals, identified by the same ``source`` you
+    sent them with.  A value a person accepted is a decision, not a proposal,
+    and is never withdrawn this way.
+    """
+
+    piece_id: int
+    field: str = Field(description="One of: " + ", ".join(sorted(KNOWN_FIELDS)))
+    source: str = Field(description="The source you used when proposing.")
+    value: str | None = Field(
+        default=None,
+        description="Withdraw just this value; omit to withdraw all of yours for the field.",
+    )
+
+
 class CandidateIn(BaseModel):
     """A proposed value.  Lands in the review queue like any machine signal."""
 

@@ -268,3 +268,65 @@ class TestPieceIdentity:
         pieces = session.scalars(select(Piece).where(Piece.source_file_id == source_file.id)).all()
         assert len(pieces) == 1
         assert pieces[0].id == piece_id
+
+
+class TestRetraction:
+    def test_a_wrong_proposal_can_be_withdrawn(self, session, collection, source_file):
+        """An agent must be able to be wrong reversibly.
+
+        A proposal that disagrees with the right value caps the field below
+        the review floor. Before retraction existed, that held the piece for
+        the life of the catalogue with no way back but a human decision.
+        """
+        from sms.ingest.persist import retract_candidate
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Wolfgang Amadeus Mozart", "docinfo", 0.85),
+            ("title", "Sonata in C Major", "docinfo", 0.85),
+        ))
+        piece = only_piece(session, source_file)
+        assert piece.route == "accept"
+
+        add_candidate(session, piece, "title", "Something Else Entirely", "curation:bot", 0.7)
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+        assert piece.route == "hold"
+
+        assert retract_candidate(session, piece, "title", "curation:bot") == 1
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+        assert piece.route == "accept"
+        assert piece.title == "Sonata in C Major"
+
+    def test_a_decision_is_not_a_proposal_and_is_not_withdrawn(self, session, collection, source_file):
+        from sms.ingest.persist import retract_candidate
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file, ("title", "Machine Guess", "path", 0.6),
+        ))
+        piece = only_piece(session, source_file)
+        accept_value(session, piece, "title", "A Person Decided", source="human")
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+
+        assert retract_candidate(session, piece, "title", "human") == 0
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+        assert only_piece(session, source_file).title == "A Person Decided"
+
+    def test_only_your_own_proposals_are_withdrawn(self, session, collection, source_file):
+        from sms.ingest.persist import retract_candidate
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file, ("title", "From The Adapter", "path", 0.6),
+        ))
+        piece = only_piece(session, source_file)
+        add_candidate(session, piece, "title", "From One Agent", "curation:a", 0.7)
+        add_candidate(session, piece, "title", "From Another", "curation:b", 0.7)
+        session.flush()
+
+        assert retract_candidate(session, piece, "title", "curation:a") == 1
+        values = {c.value for c in session.scalars(select(FieldCandidate).where(
+            FieldCandidate.piece_id == piece.id, FieldCandidate.field == "title"))}
+        assert values == {"From The Adapter", "From Another"}

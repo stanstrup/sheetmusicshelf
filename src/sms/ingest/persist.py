@@ -222,6 +222,35 @@ def is_superseded(reading: tuple[str, str, str], still_made: set[tuple[str, str,
     return reading not in still_made
 
 
+def retract_candidate(
+    session: Session, piece: Piece, field: str, source: str, value: str | None = None
+) -> int:
+    """Withdraw a proposal made by ``source``.  Returns how many were removed.
+
+    The counterpart, for agents, of an adapter withdrawing a superseded
+    reading.  Without it a wrong proposal argues its case for ever: it
+    conflicts with the right value, caps the field below the review floor, and
+    holds the piece with no way back.
+
+    A decision is not a proposal and is never retracted here -- correcting one
+    means accepting a different value, which is a decision in its own right
+    and stays on the record as one.
+    """
+    query = select(FieldCandidate).where(
+        FieldCandidate.piece_id == piece.id,
+        FieldCandidate.field == field,
+        FieldCandidate.source == source,
+        FieldCandidate.accepted.is_(False),
+    )
+    if value is not None:
+        query = query.where(FieldCandidate.value == value)
+    removed = 0
+    for row in session.scalars(query):
+        session.delete(row)
+        removed += 1
+    session.flush()
+    return removed
+
 def recompute(session: Session, piece: Piece, *, auto_accept: float, review_floor: float) -> Piece:
     """Re-resolve every field on a piece from the candidates currently stored.
 

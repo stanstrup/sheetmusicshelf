@@ -21,10 +21,18 @@ from sqlalchemy.orm import Session
 from ..auth import Principal, require
 from ..db import get_session
 from ..ingest.model import KNOWN_FIELDS, REQUIRED_FIELDS
-from ..ingest.persist import accept_value, add_candidate, recompute
+from ..ingest.persist import accept_value, add_candidate, recompute, retract_candidate
 from ..models import Collection, FieldCandidate, Piece, SourceFile
 from ..pdfsignals import read_signals
-from ..schemas import BulkResult, CandidateIn, CandidateOut, DecisionIn, PieceOut, QueueItem
+from ..schemas import (
+    BulkResult,
+    CandidateIn,
+    CandidateOut,
+    DecisionIn,
+    PieceOut,
+    QueueItem,
+    RetractionIn,
+)
 
 router = APIRouter(prefix="/curation", tags=["curation"])
 
@@ -183,6 +191,46 @@ def propose(
         added += 1
     return BulkResult(accepted=added, errors=errors)
 
+
+@router.post(
+    "/retractions",
+    response_model=BulkResult,
+    summary="Withdraw proposals you made earlier",
+)
+def retract(
+    retractions: list[RetractionIn],
+    session: Session = Depends(get_session),
+    principal: Principal = Depends(require("curation:write")),
+) -> BulkResult:
+    """Take back proposals, and re-score the pieces they were arguing about.
+
+    Proposals are signals, and a signal that turns out to be wrong should stop
+    counting.  Without this a single bad guess conflicts with the right value
+    for ever, capping the field below the review floor and holding the piece.
+
+    Only unaccepted proposals matching the ``source`` you send are removed;
+    decisions a person made are untouched.
+    """
+    removed, errors = 0, []
+    for item in retractions:
+        if item.field not in KNOWN_FIELDS:
+            errors.append(f"piece {item.piece_id}: unknown field {item.field!r}")
+            continue
+        piece = session.get(Piece, item.piece_id)
+        if piece is None:
+            errors.append(f"piece {item.piece_id}: not found")
+            continue
+        gone = retract_candidate(session, piece, item.field, item.source, item.value)
+        if not gone:
+            errors.append(
+                f"piece {item.piece_id}: nothing of yours to withdraw for {item.field!r}"
+            )
+            continue
+        collection = piece.source_file.collection
+        recompute(session, piece, auto_accept=collection.auto_accept,
+                  review_floor=collection.review_floor)
+        removed += gone
+    return BulkResult(accepted=removed, errors=errors)
 
 @router.post(
     "/decisions",
