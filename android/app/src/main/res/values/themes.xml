@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SheetMusicShelf" parent="Theme.Material3.DayNight">
+    <!-- NoActionBar, because every screen supplies its own MaterialToolbar.
+         With the plain theme you get one from the window decor as well, and
+         setSupportActionBar throws on the spot. -->
+    <style name="Theme.SheetMusicShelf" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/slate</item>
         <item name="colorSecondary">@color/slate</item>
     </style>
