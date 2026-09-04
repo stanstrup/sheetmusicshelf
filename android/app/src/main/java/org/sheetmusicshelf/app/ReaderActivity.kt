@@ -177,6 +177,11 @@ private class PageAdapter(
         val image: ImageView = frame.findViewById(R.id.page)
         val progress: ProgressBar = frame.findViewById(R.id.progress)
         lateinit var overlay: AnnotationOverlay
+
+        /** Which page this holder is showing *now*. A page fetched over a slow
+         *  link can arrive after the holder has been recycled onto another
+         *  page, and would otherwise be drawn there. */
+        var boundPage: Int = 0
     }
 
     fun overlayAt(position: Int): AnnotationOverlay? = live[position]?.overlay
@@ -207,7 +212,11 @@ private class PageAdapter(
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val page = position + 1
+        // Drop any position this holder used to answer for, or overlayAt()
+        // could hand back the overlay of a page that is no longer on screen.
+        live.entries.removeAll { it.value === holder }
         live[position] = holder
+        holder.boundPage = page
         holder.overlay.editing = editing()
         holder.overlay.tool = tool
         holder.overlay.load(strokesFor(page))
@@ -223,10 +232,16 @@ private class PageAdapter(
                 null
             }
             holder.itemView.post {
+                // The holder may have moved on while this was in flight.
+                if (holder.boundPage != page) return@post
                 holder.progress.visibility = View.GONE
                 if (bitmap != null) {
                     holder.image.setImageBitmap(bitmap)
-                    holder.image.post { holder.overlay.setPageBox(imageBox(holder.image, bitmap)) }
+                    holder.image.post {
+                        if (holder.boundPage == page) {
+                            holder.overlay.setPageBox(imageBox(holder.image, bitmap))
+                        }
+                    }
                 }
             }
         }
