@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The server is on the LAN or reached over a VPN, and is very likely served
+  over plain http on a private address. Android blocks cleartext by default,
+  which would make this app useless in exactly the setting it was built for,
+  so cleartext is permitted here.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

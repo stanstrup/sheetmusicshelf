@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SheetMusicShelf" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/slate</item>
+        <item name="colorSecondary">@color/slate</item>
+    </style>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sheet Music Shelf</string>
+    <string name="settings">Settings</string>
+    <string name="search_hint">Search by title, composer or catalogue number</string>
+    <string name="loading">Loading…</string>
+    <string name="nothing_found">Nothing matches that.</string>
+    <string name="could_not_reach">Could not reach the server.</string>
+    <string name="try_again">Try again</string>
+
+    <string name="server_label">Server address</string>
+    <string name="server_hint">192.168.1.10:8014</string>
+    <string name="token_label">API token</string>
+    <string name="token_hint">sms_…</string>
+    <string name="token_help">Make one on the server with: sms token create "phone" --scope catalog:read --scope catalog:write</string>
+    <string name="save_and_test">Save and test</string>
+    <string name="checking">Checking…</string>
+    <string name="fill_both">Fill in both the address and the token.</string>
+
+    <string name="a_page">A page of music</string>
+    <string name="page_of">Page %1$d of %2$d</string>
+    <string name="draw">Draw</string>
+    <string name="undo">Undo the last mark</string>
+    <string name="clear">Clear</string>
+    <string name="highlighter">Switch between pen and highlighter</string>
+    <string name="drawing_on">Drawing. Paging is off while you write.</string>
+    <string name="drawing_off">Reading. Swipe to turn the page.</string>
+    <string name="clear_page_title">Clear page %1$d?</string>
+    <string name="clear_page_message">Removes every mark on this page. The music itself is untouched.</string>
+    <string name="mark_not_saved">Mark not saved: %1$s</string>
+
+    <plurals name="pages">
+        <item quantity="one">%d page</item>
+        <item quantity="other">%d pages</item>
+    </plurals>
+</resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The archival slate the web reader uses, so the two feel like one app. -->
+    <color name="slate">#1F4E5F</color>
+</resources>

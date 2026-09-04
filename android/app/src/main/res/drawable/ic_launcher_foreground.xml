@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- A stave and a note: enough to know which icon it is on a home screen. -->
+    <path android:strokeColor="#E8EAE6" android:strokeWidth="2" android:fillColor="#00000000"
+        android:pathData="M30,42h48 M30,50h48 M30,58h48 M30,66h48"/>
+    <path android:fillColor="#E8EAE6"
+        android:pathData="M62,36v26a7,7 0 1,1 -4,-6.3V40l-14,3v23a7,7 0 1,1 -4,-6.3V39l22,-5z"/>
+</vector>
