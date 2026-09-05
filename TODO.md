@@ -1,5 +1,7 @@
 # TODO
 
+* can we make scrollbars smaller and dark?
+
 _(nothing outstanding — add items here)_
 
 ## Open questions for you
@@ -201,3 +203,25 @@ _(nothing outstanding — add items here)_
    The cause of the first is that reads have had a shared home since
    `catalog_query` and writes never got one, and had now drifted three times.
    `services/review.py` owns the transitions.
+
+25) ~~decide a folder at a time~~ — the archive auto-accepts nothing by design
+   and leaves 998 pieces to review, every one sharing a composer with its
+   folder-mates. The queue can now be walked in folder order as well as
+   worst-first, and the review page offers "apply to all N pending pieces in
+   this folder" for the fields the piece already has.
+
+   Worst-first is right about information per decision and wrong about what is
+   actually scarce: reloading the composer, the folder convention and the
+   catalogue system on every single item. Folder order lets you decide a set
+   with its context already in your head, and stop at a clean boundary.
+
+   Deliberately not an approval. It fills in what the folder has in common and
+   leaves each piece in the queue to be confirmed on its own, because saying
+   what a piece is called is not the same act as saying it is right, and only
+   one of those should be done fifty at a time.
+
+26) ~~`sms verify` checks the catalogue against itself~~ — the six existing
+   checks compare the catalogue with the disk. This one asserts the promise the
+   whole design rests on: an accepted candidate is a decision, and the row is
+   supposed to show it. That is the shape every write-side fault so far has
+   taken. 62 decisions in the live catalogue, all showing.

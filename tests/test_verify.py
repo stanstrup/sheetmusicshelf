@@ -94,3 +94,45 @@ class TestTheReportIsUsable:
 
     def test_it_says_how_much_it_looked_at(self, session, collection, source_file):
         assert "pieces" in verify(session).checked
+
+
+class TestTheCatalogueAgainstItself:
+    def test_a_decision_the_row_does_not_show_is_reported(
+        self, session, collection, source_file, tmp_path
+    ):
+        """The shape every write-side fault so far has taken: a value recorded
+        as a decision and the derived column left stale."""
+        from sms.ingest.persist import accept_value
+        from sms.models import Piece
+
+        real = tmp_path / "b.pdf"
+        real.write_bytes(b"%PDF")
+        source_file.managed_path = str(real)
+        piece = Piece(source_file_id=source_file.id, page_start=1, page_end=4, title="Old Title")
+        session.add(piece)
+        session.flush()
+
+        # Accept without recomputing: exactly the drift being looked for.
+        accept_value(session, piece, "title", "What A Person Decided", source="human:test")
+        session.flush()
+
+        assert "decision not showing" in _checks(verify(session))
+
+    def test_a_decision_the_row_does_show_is_not(
+        self, session, collection, source_file, tmp_path
+    ):
+        from sms.ingest.persist import accept_value, recompute
+        from sms.models import Piece
+
+        real = tmp_path / "b.pdf"
+        real.write_bytes(b"%PDF")
+        source_file.managed_path = str(real)
+        piece = Piece(source_file_id=source_file.id, page_start=1, page_end=4)
+        session.add(piece)
+        session.flush()
+
+        accept_value(session, piece, "title", "Agreed", source="human:test")
+        recompute(session, piece, auto_accept=0.8, review_floor=0.5)
+        session.flush()
+
+        assert "decision not showing" not in _checks(verify(session))

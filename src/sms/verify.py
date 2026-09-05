@@ -1,5 +1,8 @@
 """Check that the catalogue and the disk still agree.
 
+Two kinds of drift. The catalogue against the disk, and the catalogue against
+itself.
+
 Filing moves files, materialise copies them, and neither is covered by the
 database transaction: a failure part-way through rolls the rows back and
 leaves the completed moves done.  That has already happened once in anger --
@@ -19,7 +22,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .models import Piece, RemovedRange, SourceFile, Work
+from .models import FieldCandidate, Piece, RemovedRange, SourceFile, Work
 
 
 @dataclass
@@ -131,6 +134,35 @@ def verify(session: Session, *, limit: int = 50) -> Report:
             f"piece {piece.id} sits on a page range someone removed",
             "delete it again; the tombstone should have stopped this",
         )
+
+    # --- the promise the whole design rests on ----------------------------
+    # Everything above checks the catalogue against the disk. This checks the
+    # catalogue against itself: an accepted candidate is a decision, and the
+    # row is supposed to show it. Nothing else asserts that against a live
+    # database, and it is the shape every write-side bug so far has taken --
+    # a value recorded and a derived column left stale.
+    from .ingest.persist import DENORMALISED
+
+    mismatched = 0
+    for row in session.scalars(
+        select(FieldCandidate).where(FieldCandidate.accepted.is_(True))
+    ):
+        column = DENORMALISED.get(row.field)
+        if column is None:
+            continue
+        shown = getattr(row.piece, column, None)
+        if shown is None or str(shown) != row.value:
+            mismatched += 1
+            if mismatched <= limit:
+                report.add(
+                    "decision not showing",
+                    f"piece {row.piece_id} {row.field}: decided {row.value!r}, "
+                    f"row shows {shown!r}",
+                    "sms collection recompute",
+                )
+    report.checked["decisions"] = session.scalar(
+        select(func.count()).select_from(FieldCandidate).where(FieldCandidate.accepted.is_(True))
+    ) or 0
 
     report.checked["pieces"] = session.scalar(select(func.count()).select_from(Piece)) or 0
     return report

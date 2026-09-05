@@ -303,7 +303,8 @@ def _resolved_values(session: Session, piece: Piece) -> dict[str, str]:
             values[field] = str(current)
     return values
 
-def _review_queue(session: Session, collection_id: int | None, route: str | None):
+def _review_queue(session: Session, collection_id: int | None, route: str | None,
+                  order: str = "uncertain"):
     """The pending queue, least confident first.
 
     Worst guesses first: they are where a human eye changes the most.
@@ -316,6 +317,13 @@ def _review_queue(session: Session, collection_id: int | None, route: str | None
     query = query.where(Piece.route == route) if route else query.where(Piece.route.in_(["review", "hold"]))
     if collection_id is not None:
         query = query.where(SourceFile.collection_id == collection_id)
+    if order == "folder":
+        # Worst-first is right about information per decision and wrong about
+        # what is scarce: reloading the composer, the folder convention and the
+        # catalogue system on every item. Folder order lets a reviewer decide
+        # one set with its context already in their head, and stop at a clean
+        # boundary.
+        return query.order_by(SourceFile.rel_path.asc(), Piece.page_start.asc())
     return query.order_by(Piece.confidence.asc(), Piece.id.asc())
 
 
@@ -324,8 +332,9 @@ def _next_for_review(
     collection_id: int | None,
     route: str | None,
     offset: int = 0,
+    order: str = "uncertain",
 ) -> Piece | None:
-    query = _review_queue(session, collection_id, route)
+    query = _review_queue(session, collection_id, route, order)
     return session.scalar(query.limit(1).offset(offset))
 
 
@@ -337,6 +346,8 @@ def review(
     route: str = "",
     piece: int | None = None,
     offset: int = 0,
+    order: str = "uncertain",
+    applied: int = 0,
 ) -> Response:
     viewer = _viewer(request, session)
     # Reviewing a specific piece beats the queue order: arriving here from a
@@ -344,7 +355,7 @@ def review(
     item = session.get(Piece, piece) if piece else None
     offset = max(offset, 0)
     if item is None:
-        item = _next_for_review(session, collection, route or None, offset)
+        item = _next_for_review(session, collection, route or None, offset, order)
 
     outstanding_query = (
         select(func.count())
@@ -395,6 +406,14 @@ def review(
             "viewer": viewer, "item": item, "file": file_row, "fields": fields,
             "outstanding": outstanding, "route": route, "ambiguous_order": ambiguous,
             "notes": notes, "offset": offset, "collection_id": collection,
+            "order": order, "applied": applied,
+            "folder_size": (
+                len(review_service.siblings(session, item, "folder")) if item is not None else 0
+            ),
+            "folder": (
+                review_service.folder_of(item.source_file.rel_path) or "this collection"
+                if item is not None else ""
+            ),
             # True when a specific piece was asked for, rather than the queue.
             "single": piece is not None,
             "collection": session.get(Collection, collection) if collection else None,
@@ -448,6 +467,54 @@ async def review_submit(
             target += f"&collection={collection}"
     return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
+
+
+@router.post("/review/{piece_id}/bulk")
+async def review_bulk(
+    piece_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Apply this piece's values to every pending piece in its folder.
+
+    Not an approval: it records what the folder has in common -- the composer,
+    almost always -- and leaves each piece in the queue to be confirmed on its
+    own. Filling in a shared field is a different act from saying a piece is
+    right, and only one of them should be done fifty at a time.
+    """
+    viewer = _viewer(request, session)
+    piece = session.get(Piece, piece_id)
+    if piece is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
+
+    form = await request.form()
+    fields = form.getlist("bulk_field")
+    values = {
+        name: (form.get(name) or "").strip()
+        for name, _label in REVIEW_FIELDS
+        if name in fields
+    }
+    pieces = review_service.siblings(session, piece, form.get("scope") or "folder")
+    touched = review_service.decide_many(
+        session, pieces, values, review_service.Reviewer(viewer.user_id, viewer.display_name)
+    )
+    commit_now(session)
+
+    query = _review_link(form)
+    return RedirectResponse(
+        f"/review?{query}&applied={touched}" if query else f"/review?applied={touched}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _review_link(form) -> str:
+    """Carry the queue's own state back through a redirect."""
+    parts = []
+    for key in ("collection", "route", "order"):
+        value = (form.get(key) or "").strip()
+        if value:
+            parts.append(f"{key}={value}")
+    return "&".join(parts)
 
 
 @router.post("/piece/{piece_id}/delete")

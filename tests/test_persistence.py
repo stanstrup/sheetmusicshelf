@@ -496,3 +496,74 @@ class TestReviewTransitions:
         review.skip(session, piece)
         assert piece.review_state == "pending"
         assert piece.confidence > before      # just moved behind the rest
+
+
+class TestDecidingAFolderAtOnce:
+    """998 items one at a time is the thing that makes the project fail."""
+
+    def _folder(self, session, collection, names, composer="Isaac Albeniz"):
+        from sms.models import SourceFile
+        pieces = []
+        for name in names:
+            source = SourceFile(collection_id=collection.id, rel_path=name,
+                                page_count=2, size=1)
+            session.add(source)
+            session.flush()
+            commit_proposal(session, collection, signals_for(source, pages=2), proposal_with(
+                source,
+                ("composer", composer, "folder", 0.7),
+                ("title", name.rsplit("/", 1)[-1][:-4], "filename", 0.55),
+                pages=2,
+            ))
+            pieces.append(session.scalar(
+                select(Piece).where(Piece.source_file_id == source.id)))
+        return pieces
+
+    def test_siblings_are_the_folder_not_the_subtree(self, session, collection):
+        from sms.services import review
+
+        here = self._folder(session, collection, ["albeniz/cadiz.pdf", "albeniz/cuba.pdf"])
+        self._folder(session, collection, ["albeniz/suite/no1.pdf"])
+        self._folder(session, collection, ["bach/wtc1.pdf"], composer="J S Bach")
+
+        found = review.siblings(session, here[0], "folder")
+        assert {p.source_file.rel_path for p in found} == {"albeniz/cadiz.pdf", "albeniz/cuba.pdf"}
+
+    def test_it_confirms_a_value_the_row_already_shows(self, session, collection):
+        """The common case, and the one that made the first version useless.
+
+        The folder already carries the right composer as a guess; the point is
+        to turn that guess into a decision across the whole set.
+        """
+        from sms.services import review
+
+        pieces = self._folder(session, collection, ["albeniz/a.pdf", "albeniz/b.pdf", "albeniz/c.pdf"])
+        touched = review.decide_many(
+            session, pieces, {"composer": "Isaac Albeniz"}, review.Reviewer(None, "test")
+        )
+        assert touched == 3
+        for piece in pieces:
+            accepted = session.scalars(select(FieldCandidate).where(
+                FieldCandidate.piece_id == piece.id,
+                FieldCandidate.accepted.is_(True))).all()
+            assert [c.value for c in accepted] == ["Isaac Albeniz"]
+
+    def test_it_does_not_approve_them(self, session, collection):
+        """Filling in a shared field is a different act from saying a piece is
+        right, and only one of them should be done fifty at a time."""
+        from sms.services import review
+
+        pieces = self._folder(session, collection, ["albeniz/a.pdf", "albeniz/b.pdf"])
+        review.decide_many(session, pieces, {"composer": "Isaac Albeniz"},
+                           review.Reviewer(None, "test"))
+        assert all(p.review_state == "pending" for p in pieces)
+
+    def test_the_queue_can_be_walked_in_folder_order(self, session, collection):
+        from sms.models import SourceFile
+        from sms.web import _review_queue
+
+        self._folder(session, collection, ["zzz/late.pdf", "aaa/early.pdf"])
+        session.flush()
+        ordered = list(session.scalars(_review_queue(session, collection.id, None, "folder")))
+        paths = [p.source_file.rel_path for p in ordered]
+        assert paths == sorted(paths)

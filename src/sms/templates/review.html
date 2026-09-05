@@ -14,11 +14,20 @@
         Confirm what is right, fix what is not.{% endif %}
       </p>
     </div>
+    {% if applied %}
+      <p class="applied">Filled in {{ applied }} piece{{ '' if applied == 1 else 's' }} in that folder.</p>
+    {% endif %}
     <nav class="review-filters">
       {% for value, label in [('', 'All'), ('review', 'Needs review'), ('hold', 'Held')] %}
         <a class="{{ 'on' if route == value }}"
            href="/review?{% if collection %}collection={{ collection.id }}&{% endif %}route={{ value }}">{{ label }}</a>
       {% endfor %}
+      <span class="queue-order">
+        {% for value, label in [('uncertain', 'Least certain'), ('folder', 'By folder')] %}
+          <a class="{{ 'on' if order == value }}"
+             href="/review?order={{ value }}{% if route %}&route={{ route }}{% endif %}{% if collection_id %}&collection={{ collection_id }}{% endif %}">{{ label }}</a>
+        {% endfor %}
+      </span>
       {% if not single %}
         {# Move through the queue without deciding anything -- useful for
            finding a piece you can actually judge before committing to one. #}
@@ -122,6 +131,36 @@
           re-scan cannot recreate it. The PDF is untouched.</dd>
       </dl>
     </form>
+
+    {% if folder_size > 1 %}
+      {# Everything in one archive folder shares a composer. Typing it fifty
+         times is how a 998-item queue stops being reviewed at all. #}
+      <form class="review-bulk" method="post" action="/review/{{ item.id }}/bulk">
+        <input type="hidden" name="collection" value="{{ collection_id or '' }}">
+        <input type="hidden" name="route" value="{{ route }}">
+        <input type="hidden" name="order" value="{{ order }}">
+        <input type="hidden" name="scope" value="folder">
+        {% for field in fields %}
+          <input type="hidden" name="{{ field.name }}" value="{{ field.value or '' }}">
+        {% endfor %}
+        <p class="hint muted">
+          Apply to all <strong>{{ folder_size }}</strong> pending pieces in
+          <code>{{ folder }}</code>:
+        </p>
+        <p class="bulk-fields">
+          {% for field in fields %}
+            {% if field.value %}
+              <label><input type="checkbox" name="bulk_field" value="{{ field.name }}"
+                     {{ 'checked' if field.name == 'composer' }}> {{ field.label }}</label>
+            {% endif %}
+          {% endfor %}
+        </p>
+        <button class="button ghost" type="submit">Apply to the folder</button>
+        <span class="hint muted">
+          Fills the field in; each piece still waits for you to accept it.
+        </span>
+      </form>
+    {% endif %}
 
     <form class="review-delete" method="post" action="/piece/{{ item.id }}/delete"
           onsubmit="return confirm('Delete this catalogue entry for good? The PDF on disk is not touched.');">

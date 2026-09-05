@@ -100,6 +100,77 @@ def skip(session: Session, piece: Piece) -> Piece:
     return piece
 
 
+def siblings(session: Session, piece: Piece, scope: str = "folder") -> list[Piece]:
+    """The pending pieces this one sits with, including itself.
+
+    ``folder`` is the directory the file is in, which in every collection here
+    is the unit that shares a composer.  ``file`` is the pieces of one volume,
+    for an anthology split into many.
+    """
+    from sqlalchemy import select
+
+    from ..models import SourceFile
+
+    query = (
+        select(Piece)
+        .join(SourceFile)
+        .where(
+            SourceFile.collection_id == piece.source_file.collection_id,
+            Piece.review_state == "pending",
+        )
+    )
+    if scope == "file":
+        query = query.where(Piece.source_file_id == piece.source_file_id)
+    else:
+        folder = folder_of(piece.source_file.rel_path)
+        # Same directory, not the whole subtree: "bach" is a composer, but
+        # "bach/wtc" is a set and "bach/invents" is a different one.
+        query = query.where(SourceFile.rel_path.like(f"{folder}%")).where(
+            ~SourceFile.rel_path.like(f"{folder}%/%")
+        )
+    return list(session.scalars(query.order_by(Piece.id)))
+
+
+def folder_of(rel_path: str) -> str:
+    normalised = rel_path.replace("\\", "/")
+    cut = normalised.rfind("/")
+    return "" if cut < 0 else normalised[: cut + 1]
+
+
+def decide_many(
+    session: Session,
+    pieces: list[Piece],
+    values: dict[str, str],
+    reviewer: Reviewer,
+) -> int:
+    """Apply the same values to several pieces.  Returns how many changed.
+
+    Deliberately *not* an approval: it records what these pieces have in
+    common -- the composer, usually -- and leaves each one in the queue to be
+    confirmed on its own. Filling in a shared field is a different act from
+    saying a piece is right.
+    """
+    touched = 0
+    for piece in pieces:
+        # Not changed_only. Ticking the box *is* the act: the folder almost
+        # always already carries the right composer as a guess, and the point
+        # is to turn that guess into a decision across the whole set. That is
+        # the opposite of the single-piece form, which arrives pre-filled and
+        # must not record values nobody looked at.
+        if decide(session, piece, values, reviewer, changed_only=False):
+            collection = piece.source_file.collection
+            recompute(
+                session, piece,
+                auto_accept=collection.auto_accept,
+                review_floor=collection.review_floor,
+            )
+            touched += 1
+    if touched:
+        _queue_filing(session, pieces[0].source_file.collection_id)
+    session.flush()
+    return touched
+
+
 def decide(
     session: Session,
     piece: Piece,
