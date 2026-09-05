@@ -23,11 +23,27 @@ RUN pip install --no-cache-dir .
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# Permissions are set here rather than inherited, because the build context
+# reaches this machine over SMB from Windows and arrives mode 770: readable by
+# root only. The container runs as an unprivileged user, so every one of these
+# files has to be readable by "other" or nothing works -- the entrypoint died
+# with "Permission denied" for want of the read bit, and alembic then died the
+# same way on pyproject.toml.
+#
+# a+rX is the safe form: read for everyone, execute only where it already is
+# (directories, and the entrypoint below).
+RUN chmod 755 /usr/local/bin/entrypoint.sh  && chmod -R a+rX /app
 
 # Never write to the library as root: the source mount is read-only, but the
 # managed tree is not, and a stray root-owned file on the NAS is a nuisance.
 RUN useradd --uid 1000 --create-home --shell /bin/bash sms
+
+# Own the cache before dropping privileges. Docker seeds a fresh named volume
+# from the image's directory, ownership included, so a /cache that does not
+# exist here arrives owned by root -- and the unprivileged user cannot write a
+# single rendered page into it. Every page request 500s on the first mkdir.
+RUN mkdir -p /cache && chown -R sms:sms /cache
+
 USER sms
 
 EXPOSE 8000

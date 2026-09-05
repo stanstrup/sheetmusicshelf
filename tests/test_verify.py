@@ -46,6 +46,11 @@ class TestDrift:
 
     def test_a_file_with_neither_copy_nor_original(self, session, collection, source_file):
         # managed_path is already None and source_path points nowhere real.
+        # It needs a piece: a file nothing points at is retired, not missing.
+        from sms.models import Piece
+
+        session.add(Piece(source_file_id=source_file.id, page_start=1, page_end=2))
+        session.flush()
         assert "file unreadable" in _checks(verify(session))
 
     def test_a_page_range_past_the_end_of_the_file(self, session, collection, source_file, tmp_path):
@@ -136,3 +141,24 @@ class TestTheCatalogueAgainstItself:
         session.flush()
 
         assert "decision not showing" not in _checks(verify(session))
+
+
+class TestRetiredFilesAreNotProblems:
+    def test_a_file_whose_pieces_are_gone_is_not_reported(self, session, collection, source_file):
+        """A merged split part, or a snippet somebody rejected.
+
+        The row is kept as provenance and nothing will ever ask to open it.
+        Reporting these made verify raise fifty complaints about a catalogue
+        that was in perfect order.
+        """
+        # source_file has no managed_path and no readable original, and no pieces.
+        assert "file unreadable" not in _checks(verify(session))
+
+    def test_a_file_something_still_points_at_is_reported(
+        self, session, collection, source_file
+    ):
+        from sms.models import Piece
+
+        session.add(Piece(source_file_id=source_file.id, page_start=1, page_end=2))
+        session.flush()
+        assert "file unreadable" in _checks(verify(session))

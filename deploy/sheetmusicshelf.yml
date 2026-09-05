@@ -114,9 +114,18 @@ services:
         limits:
           memory: 512M
           cpus: "1.0"
+    # The image carries a healthcheck that curls the web port, which is right
+    # for the app and meaningless here: a worker serves no HTTP, so it would
+    # report unhealthy for ever while working perfectly. An always-red light is
+    # worse than no light, because it trains you to ignore the real one.
+    healthcheck:
+      disable: true
     depends_on:
       sheetmusicshelf:
-        condition: service_started
+        # Healthy, not merely started: only the web role runs the migrations,
+        # and a worker that opens the database first finds no tables and
+        # crash-loops until they appear.
+        condition: service_healthy
 
   postgres-sheetmusicshelf:
     image: postgres:16

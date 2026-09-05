@@ -79,8 +79,19 @@ def verify(session: Session, *, limit: int = 50) -> Report:
         )
 
     # --- neither a library copy nor a readable original --------------------
+    #
+    # Only files something still points at. A file whose pieces were all
+    # deleted -- a merged split part, a promotional snippet someone rejected --
+    # is retired, not missing: the row is kept as provenance and nothing will
+    # ever ask to open it. Reporting those made `verify` cry wolf fifty times
+    # on a catalogue that was in perfect order.
     unreadable = []
-    for row in session.scalars(select(SourceFile).where(SourceFile.managed_path.is_(None))):
+    for row in session.scalars(
+        select(SourceFile).where(
+            SourceFile.managed_path.is_(None),
+            SourceFile.id.in_(select(Piece.source_file_id)),
+        )
+    ):
         original = Path(row.collection.source_path) / row.rel_path
         if not original.exists():
             unreadable.append(row)

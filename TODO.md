@@ -280,3 +280,32 @@ _(nothing outstanding — add items here)_
    ${SMS_CONTACT:?...}` would have failed the very first `docker compose up`
    with a variable that was sitting in the env file all along. Nothing secret
    is named in `environment:` now.
+
+33) ~~get the stack actually running~~ — it is, on 8014, with the whole
+   catalogue. Five faults between "it builds" and "it works", none of which a
+   test could have found:
+
+   * the worker declared an image and no build, so compose tried to pull it;
+   * the build context was an absolute /mnt/z path, so it resolved from WSL
+     and nowhere else;
+   * the context arrives over SMB mode 770, so every copied file was unreadable
+     to the unprivileged user the container runs as -- `chmod +x` on the
+     entrypoint only added execute, leaving it executable but not readable;
+   * the worker inherited the app's healthcheck, which curls a port it does not
+     serve, so it reported unhealthy for ever while working;
+   * `/cache` is a named volume, seeded root-owned from an image that never
+     made the directory, so every page render 500'd on the first mkdir.
+
+   The catalogue was moved across with pg_dump, and its `managed_path` values
+   rewritten from `Z:\Books\SheetMusic` to `/library/managed` --
+   they were absolute Windows paths, meaningless on the other side of the
+   mount.
+
+   `verify` was crying wolf about it: fifty "file unreadable" complaints, all
+   of them files retired on purpose -- the 118 merged split parts and the two
+   promotional snippets. A file nothing points at any more is retired, not
+   missing, and is no longer reported.
+
+34) ~~add it to start.bat~~ — beside calibre, with the homepage network
+   placeholder the other stacks have, so disabling it later cannot break
+   homepage's startup.
