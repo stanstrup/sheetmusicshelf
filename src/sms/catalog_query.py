@@ -64,12 +64,7 @@ def narrow(query, filters: Filters, *, text_match: str = "exact"):
         return column.ilike(f"%{value}%") if text_match == "contains" else column == value
 
     if filters.q:
-        like = f"%{filters.q.strip()}%"
-        query = query.where(or_(
-            Piece.title.ilike(like),
-            Piece.composer_name.ilike(like),
-            Piece.catalog_display.ilike(like),
-        ))
+        query = _search(query, filters.q)
     for column, value in (
         (Piece.composer_name, filters.composer),
         (Piece.form, filters.form),
@@ -105,6 +100,70 @@ def narrow(query, filters: Filters, *, text_match: str = "exact"):
         query = query.where(Piece.review_state != "rejected")
     return query
 
+
+#: Everything a free-text search looks in.
+#:
+#: The key is here because "chopin nocturne c minor" is a sentence people type
+#: and every word of it has to land somewhere.  The *form* is deliberately not:
+#: in the CD Sheet Music collection it holds the name of the volume a piece came
+#: in, so every Mozart sonata carries form "Sonatas and Fantasies" and searching
+#: for a fantasy returned eighteen sonatas ahead of the six real ones.  A
+#: piece's title already says what it is.
+def _searchable():
+    return (
+        Piece.title,
+        Piece.composer_name,
+        Piece.catalog_display,
+        Piece.music_key,
+    )
+
+
+#: More words than this and the reader is not searching, they are pasting.
+MAX_TERMS = 8
+
+
+def _search(query, text: str):
+    """Narrow by a phrase, one word at a time.
+
+    Every word must match *something* -- title, composer, catalogue number,
+    form or key -- but they need not all match the same thing.  That is what
+    makes "mozart fantasy" work: one word is the composer, the other is the
+    title, and matching the phrase as a single string against each column in
+    turn could never find it.
+
+    Words are combined with AND, so each one narrows.  Spellings within a word
+    are combined with OR, so "study" also finds an etude.
+    """
+    from sqlalchemy import func
+
+    from .music.synonyms import expand
+
+    for term in text.split()[:MAX_TERMS]:
+        term = term.strip()
+        if not term:
+            continue
+        clauses = []
+        if len(term) == 1:
+            # A single letter is a key -- the F of "in F minor" -- and as a
+            # plain substring it is noise: bare "f" otherwise matches Fantasy,
+            # Fugue and half the catalogue.  So it is matched against the key,
+            # and against a title that names its key in words.
+            clauses.append(Piece.music_key.ilike(f"{term}%"))
+            clauses.append(Piece.title.ilike(f"% in {term}%"))
+        else:
+            for spelling in expand(term):
+                like = f"%{spelling}%"
+                clauses.extend(column.ilike(like) for column in _searchable())
+        # A catalogue number is written "K. 279" but typed "k279" as often as
+        # not, so compare it with the spacing and dots taken out as well.
+        bare = "".join(ch for ch in term if ch.isalnum())
+        if bare:
+            flattened = func.replace(
+                func.replace(func.coalesce(Piece.catalog_display, ""), " ", ""), ".", ""
+            )
+            clauses.append(flattened.ilike(f"%{bare}%"))
+        query = query.where(or_(*clauses))
+    return query
 
 def base_query():
     """A piece query with the file joined, which every filter may rely on."""
