@@ -1,0 +1,107 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title = 'Sheet Music Shelf',
+  description = 'Self-hosted sheet music catalogue. Browse, read, and curate your PDF collection.',
+} = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600&display=swap">
+  <style is:global>
+    :root {
+      --ink:          #1A2040;
+      --navy:         #2C4A8C;
+      --sky:          #4A82D8;
+      --ground:       #F4F6FB;
+      --surface:      #FFFFFF;
+      --muted:        #6C7BA8;
+      --border:       #D8E2F4;
+      --accent-light: #EBF0FC;
+      --code-bg:      #0D1117;
+      --code-fg:      #C9D1D9;
+      --code-border:  #30363D;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ink:          #D8E4F8;
+        --navy:         #5B8FE8;
+        --sky:          #7AAAF0;
+        --ground:       #0D1117;
+        --surface:      #161B27;
+        --muted:        #7A8BB5;
+        --border:       #2A3655;
+        --accent-light: #1A2545;
+        --code-bg:      #0A0E17;
+        --code-border:  #2A3655;
+      }
+    }
+    :root[data-theme="dark"] {
+      --ink:          #D8E4F8;
+      --navy:         #5B8FE8;
+      --sky:          #7AAAF0;
+      --ground:       #0D1117;
+      --surface:      #161B27;
+      --muted:        #7A8BB5;
+      --border:       #2A3655;
+      --accent-light: #1A2545;
+      --code-bg:      #0A0E17;
+      --code-border:  #2A3655;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Source Sans 3', system-ui, sans-serif;
+      background: var(--ground);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--sky); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    h1, h2, h3, h4 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      text-wrap: balance;
+    }
+
+    code {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85em;
+      background: var(--accent-light);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.1em 0.35em;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    img { max-width: 100%; height: auto; display: block; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <slot />
+</body>
+</html>

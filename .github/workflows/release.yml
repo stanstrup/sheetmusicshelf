@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build starter pack
+        run: |
+          mkdir -p _pack
+          cp deploy/sheetmusicshelf.yml _pack/sheetmusicshelf.yml
+          cp .env.example _pack/.env.example
+          cd _pack
+          zip -r ../sheetmusicshelf-starter-pack-${{ github.ref_name }}.zip .
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sheetmusicshelf-starter-pack-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          body: |
+            ## Quick start
+
+            1. Download `sheetmusicshelf-starter-pack-${{ github.ref_name }}.zip` below
+            2. Extract into your compose directory (e.g. `Z:\docker\compose\`)
+            3. Fill in `.env.example` → rename to `.sheetmusicshelf.env`
+            4. From WSL: `docker compose -f sheetmusicshelf.yml up -d`
+
+            The Docker image is available at `ghcr.io/${{ github.repository }}:${{ github.ref_name }}`.
+
+            > **Note:** Run compose from WSL so the `/mnt/z/Books/SheetMusic` bind mounts resolve.

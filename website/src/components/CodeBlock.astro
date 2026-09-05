@@ -1,0 +1,46 @@
+---
+interface Props {
+  filename?: string;
+  label?: string;
+}
+const { filename, label } = Astro.props;
+---
+<div class="code-block">
+  {(filename || label) && (
+    <div class="header">
+      {filename && <span class="filename">{filename}</span>}
+      {label && <span class="label">{label}</span>}
+    </div>
+  )}
+  <pre><slot /></pre>
+</div>
+
+<style>
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 1rem;
+    background: #161B27;
+    border-bottom: 1px solid var(--code-border);
+    font-size: 0.76rem;
+    color: #6B7A9A;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .label { font-family: 'Source Sans 3', sans-serif; font-weight: 600; }
+  pre {
+    padding: 1.2rem;
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--code-fg);
+  }
+</style>

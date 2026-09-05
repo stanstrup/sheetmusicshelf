@@ -1,0 +1,65 @@
+---
+interface Props {
+  url: string;
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  loading?: 'eager' | 'lazy';
+}
+const { url, src, alt, width = 1512, height = 812, loading = 'lazy' } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const imgSrc = src.startsWith('/') ? base.replace(/\/$/, '') + src : src;
+---
+<div class="browser-frame">
+  <div class="chrome">
+    <div class="dots">
+      <span class="dot red"></span>
+      <span class="dot amber"></span>
+      <span class="dot green"></span>
+    </div>
+    <div class="bar">{url}</div>
+  </div>
+  <img src={imgSrc} alt={alt} width={width} height={height} loading={loading} decoding="async">
+</div>
+
+<style>
+  .browser-frame {
+    background: #1E2433;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 56px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: #252B3B;
+    border-bottom: 1px solid #181D2A;
+  }
+  .dots { display: flex; gap: 0.35rem; }
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .dot.red   { background: #FF5F57; }
+  .dot.amber { background: #FEBC2E; }
+  .dot.green { background: #28C840; }
+  .bar {
+    flex: 1;
+    background: #1A2030;
+    border-radius: 4px;
+    height: 22px;
+    font-size: 0.7rem;
+    color: #6B7A9A;
+    display: flex;
+    align-items: center;
+    padding: 0 0.6rem;
+    font-family: 'Courier New', Courier, monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>

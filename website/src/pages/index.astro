@@ -1,0 +1,810 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import BrowserFrame from '../components/BrowserFrame.astro';
+import StaffDivider from '../components/StaffDivider.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+---
+<Base
+  title="Sheet Music Shelf"
+  description="Self-hosted sheet music catalogue. Browse by composer, period, form, or key. Read in the browser. Runs on your NAS in one compose file."
+>
+  <Nav />
+
+  <!-- ── Hero ──────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-text">
+      <p class="hero-eyebrow">Self-hosted · Docker · Open source</p>
+      <h1>Your sheet&nbsp;music library, <em>finally&nbsp;searchable</em></h1>
+      <p class="hero-sub">
+        A self-hosted catalogue for PDF sheet music collections. Browse 1,800+ pieces
+        by composer, period, form, or key. Read in the browser with annotations.
+        Runs on your NAS or homelab in one compose file.
+      </p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="https://github.com/stanstrup/sheetmusicshelf/releases/latest">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download starter pack
+        </a>
+        <a class="btn-secondary" href="https://github.com/stanstrup/sheetmusicshelf">View on GitHub</a>
+      </div>
+      <div class="quick-cmd">
+        <span class="dollar" aria-hidden="true">$</span>
+        <code>docker compose -f sheetmusicshelf.yml up -d</code>
+      </div>
+    </div>
+    <div class="hero-shot">
+      <BrowserFrame
+        url="sheetmusic.example.org"
+        src="/screenshots/browse.jpg"
+        alt="Browse view — 1,825 pieces sorted by composer, with facet filters and thumbnail previews of sheet music pages"
+        loading="eager"
+      />
+    </div>
+  </section>
+
+  <StaffDivider />
+
+  <!-- ── Screenshots ───────────────────────────────────────────── -->
+  <section class="screenshots-section">
+    <div class="container">
+      <SectionHeading eyebrow="In action" lead="Browse to find, read in place, annotate as you go.">
+        Everything in one window
+      </SectionHeading>
+    </div>
+    <div class="screenshots-scroll">
+
+      <div class="screenshot-card">
+        <BrowserFrame
+          url="sheetmusic.example.org/read/1"
+          src="/screenshots/reader.jpg"
+          alt="Reader — Mozart Sonata No. 18 open full-width in the browser reader"
+        />
+        <p class="caption">In-browser reader — pen, highlighter, two-up mode, fullscreen, screen-awake</p>
+      </div>
+
+      <div class="screenshot-card">
+        <BrowserFrame
+          url="sheetmusic.example.org/composer/1"
+          src="/screenshots/composer.jpg"
+          alt="Composer page for Wolfgang Amadeus Mozart — portrait, Wikipedia bio, 139 linked pieces"
+        />
+        <p class="caption">Composer pages — Wikidata portrait, Wikipedia bio, all pieces at a glance</p>
+      </div>
+
+      <div class="screenshot-card">
+        <BrowserFrame
+          url="sheetmusic.example.org/piece/1"
+          src="/screenshots/piece.jpg"
+          alt="Piece detail — thumbnail, metadata facts, difficulty/rating fields, MusicBrainz link"
+        />
+        <p class="caption">Piece detail — catalogue number, key, form, your personal ratings and notes</p>
+      </div>
+
+    </div>
+  </section>
+
+  <StaffDivider />
+
+  <!-- ── Features ──────────────────────────────────────────────── -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <SectionHeading eyebrow="Features" lead="Built around the actual workflows of a practising musician.">
+        Built for serious libraries
+      </SectionHeading>
+
+      <div class="features-grid">
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <h3>Faceted browse</h3>
+          <p>
+            Filter by composer, period, form (sonata, étude, waltz…), instrumentation,
+            key, or collection — combinations narrow the results live without a page reload.
+            A search bar handles composer names and titles. Sort by composer, title, or
+            cataloguing confidence.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+          </div>
+          <h3>In-browser reader</h3>
+          <p>
+            PWA reader — install it to your home screen and it works offline. Annotations
+            (pen, highlighter, eraser) are stored per page and survive refreshes. Two-up mode
+            pairs facing pages. A screen-awake toggle keeps the tablet lit while you play.
+            Fullscreen hides the OS chrome entirely.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Canonical enrichment</h3>
+          <p>
+            Works are matched to MusicBrainz by catalogue number — K. 331, Op. 67,
+            BWV 1004 — using the one identifier that survives every publisher's retitling.
+            Composition year is fetched from the linked IMSLP page. Composer portraits and
+            bios come from Wikidata, cached locally.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <h3>Composer pages</h3>
+          <p>
+            Each composer gets a page with their Wikidata portrait (with attribution),
+            birth–death years, historical period, a Wikipedia excerpt, and a
+            scrollable grid of every piece in the library. Links back to the filtered
+            browse view for deeper faceting.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+          </div>
+          <h3>Shelves</h3>
+          <p>
+            Ordered collections — a practice setlist, a concert programme, a teaching sequence.
+            A shelf is a playlist, not a tag: pieces have positions and can appear on
+            multiple shelves. Add from any piece page; reorder in the shelf view.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>Curation API</h3>
+          <p>
+            All cataloguing metadata — title, composer, key, form, catalogue number — is
+            writable through a documented HTTP API with token auth. Use an external LLM
+            to suggest metadata; you review each proposal and accept or reject it.
+            The app never calls a model itself.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h3>Ingest &amp; review queue</h3>
+          <p>
+            Drop new PDFs into an ingest folder (Calibre-style) and run <code>sms ingest --apply</code>.
+            The scanner extracts bookmarks and text, proposes a title, composer, key, and form,
+            and scores its own confidence. Pieces above the <em>auto-accept</em> threshold are
+            accepted automatically; the rest land in the review queue.
+          </p>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>Docker-native</h3>
+          <p>
+            Ships as a single image: app, worker, and Postgres in one compose file.
+            OIDC via authentik for household SSO; falls back to a shared password.
+            Backup labels for nautical-backup. Worker throttles itself against the
+            host's load average so your other 40-odd containers stay responsive.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <StaffDivider />
+
+  <!-- ── Setup ─────────────────────────────────────────────────── -->
+  <section class="setup-section" id="setup">
+    <div class="container">
+      <SectionHeading eyebrow="Setup" lead="Runs on any Docker host with a shared music folder. The compose file is self-contained.">
+        Up in five minutes
+      </SectionHeading>
+
+      <div class="setup-steps">
+        <div class="setup-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Prerequisites</h3>
+            <p>
+              Docker Desktop with WSL2 integration enabled. The library bind mounts are
+              <code>/mnt/z/Books/SheetMusic</code>-style paths that only resolve from inside WSL —
+              run <code>docker compose up</code> from there, not from PowerShell.
+            </p>
+            <p>
+              Postgres runs as a sidecar (no external instance needed). The cache volume
+              holds thumbnails and extracted text; it's a named Docker volume rather than
+              a CIFS mount because thousands of small files over SMB are slow.
+            </p>
+          </div>
+        </div>
+
+        <div class="setup-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Download the starter pack</h3>
+            <p>
+              Grab the latest release from GitHub. Extract into your compose directory
+              (e.g. <code>Z:\docker\compose\</code>). You get two files:
+            </p>
+            <ul>
+              <li><code>sheetmusicshelf.yml</code> — the full compose stack</li>
+              <li><code>.env.example</code> — secrets template; rename to <code>.sheetmusicshelf.env</code></li>
+            </ul>
+            <div class="action-link">
+              <a class="btn-primary btn-sm" href="https://github.com/stanstrup/sheetmusicshelf/releases/latest">
+                Download starter pack →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Fill in the env file</h3>
+            <p>Rename <code>.env.example</code> to <code>.sheetmusicshelf.env</code> and set at minimum:</p>
+            <CodeBlock filename=".sheetmusicshelf.env">{`# Required — signs the session cookie
+SMS_SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_urlsafe(48))">
+
+# Required before any MusicBrainz or IMSLP lookup
+SMS_CONTACT=you@example.com
+
+# Authentication: shared password for households without an IdP
+SMS_PASSWORD=correct-horse-battery-staple
+
+# --- or OIDC (wins over SMS_PASSWORD when both are set) ---
+# SMS_OIDC_CLIENT_ID=
+# SMS_OIDC_CLIENT_SECRET=
+# SMS_OIDC_ISSUER= (set in the compose file as SMS_OIDC_ISSUER)
+
+# Database password — must match POSTGRES_PASSWORD in .sheetmusicshelf-db.env
+# SMS_DATABASE_URL=postgresql+psycopg://sms:YOURPASS@postgres-sheetmusicshelf:5432/sms`}</CodeBlock>
+            <p>
+              Create <code>.sheetmusicshelf-db.env</code> with just
+              <code>POSTGRES_PASSWORD=YOURPASS</code> (matching the URL above).
+            </p>
+          </div>
+        </div>
+
+        <div class="setup-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>Edit mount paths and bring it up</h3>
+            <p>
+              Open <code>sheetmusicshelf.yml</code> and adjust the volume paths to match
+              your library location. Then from WSL:
+            </p>
+            <CodeBlock>{`cd /mnt/z/docker/compose
+docker compose -f sheetmusicshelf.yml up -d`}</CodeBlock>
+            <p>
+              The web service runs the Alembic migrations automatically before it starts
+              serving. The worker waits for the web service to be healthy before it starts
+              processing — so there's no race condition on the first run.
+            </p>
+          </div>
+        </div>
+
+        <div class="setup-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h3>Register a collection and scan</h3>
+            <p>
+              A <em>collection</em> is a root directory the scanner indexes. Register one,
+              then scan it. New files are proposed with a confidence score; accepted pieces
+              go into the library.
+            </p>
+            <CodeBlock>{`# Register the collection (once)
+docker exec sheetmusicshelf sms collection add /library/managed --name "My Library"
+
+# Scan — proposes new pieces from the directory tree
+docker exec sheetmusicshelf sms collection scan 1
+
+# Review the queue in the browser, then accept or reject
+# Or: apply all pending proposals above the auto-accept threshold
+docker exec sheetmusicshelf sms ingest --apply`}</CodeBlock>
+            <p>
+              The worker runs enrichment (thumbnails, MusicBrainz, Wikidata) in the background
+              after each scan. It throttles itself while the host's 1-minute load average is
+              above <code>SMS_LOAD_CEILING</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="setup-step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h3>Add a reverse proxy</h3>
+            <p>
+              The app listens on port <strong>8014</strong>. Point a reverse proxy (Nginx Proxy Manager,
+              Traefik, Caddy) at it and give it a hostname. Set <code>SMS_BASE_URL</code> in the
+              compose file to the public URL — it's used for OIDC redirects and the
+              service-worker scope.
+            </p>
+            <CodeBlock filename="sheetmusicshelf.yml (excerpt)">{`environment:
+  SMS_BASE_URL: https://sheetmusic.example.org`}</CodeBlock>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <StaffDivider />
+
+  <!-- ── Configuration ─────────────────────────────────────────── -->
+  <section class="config-section" id="configuration">
+    <div class="container">
+      <SectionHeading eyebrow="Configuration" lead="All settings are environment variables — no config file needed.">
+        Environment reference
+      </SectionHeading>
+
+      <div class="config-table-wrap">
+        <table class="config-table">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="group-header"><td colspan="3">Authentication</td></tr>
+            <tr>
+              <td><code>SMS_SECRET_KEY</code></td>
+              <td><em>required</em></td>
+              <td>Signs the browser session cookie. Generate with <code>python -c "import secrets; print(secrets.token_urlsafe(48))"</code></td>
+            </tr>
+            <tr>
+              <td><code>SMS_PASSWORD</code></td>
+              <td></td>
+              <td>Shared password for the whole library. Ignored when OIDC is configured.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_OIDC_ISSUER</code></td>
+              <td></td>
+              <td>OIDC issuer URL (e.g. authentik). Wins over <code>SMS_PASSWORD</code> when set together with the client credentials.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_OIDC_CLIENT_ID</code></td>
+              <td></td>
+              <td>OIDC client id from your identity provider.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_OIDC_CLIENT_SECRET</code></td>
+              <td></td>
+              <td>OIDC client secret.</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="3">Paths</td></tr>
+            <tr>
+              <td><code>SMS_MANAGED_ROOT</code></td>
+              <td><code>/library/managed</code></td>
+              <td>The catalogued library tree. Mount your music collection here read-write.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_INGEST_ROOT</code></td>
+              <td><code>/library/ingest</code></td>
+              <td>Drop folder for new PDFs. Files here are moved into the managed tree on <code>sms ingest --apply</code>.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_CACHE_ROOT</code></td>
+              <td><code>/cache</code></td>
+              <td>Thumbnails and extracted text. Use a named Docker volume — CIFS is too slow for thousands of small files.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_APK_ROOT</code></td>
+              <td><code>/library/managed/_app</code></td>
+              <td>Where a published Android APK is served from, so tablets can install from the same server.</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="3">Cataloguing thresholds</td></tr>
+            <tr>
+              <td><code>SMS_AUTO_ACCEPT</code></td>
+              <td><code>0.80</code></td>
+              <td>Confidence score above which proposals are accepted automatically without going to the review queue.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_REVIEW_FLOOR</code></td>
+              <td><code>0.50</code></td>
+              <td>Minimum confidence score to show a proposal in the review queue. Below this it is discarded.</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="3">Worker behaviour</td></tr>
+            <tr>
+              <td><code>SMS_LOAD_CEILING</code></td>
+              <td><code>6.0</code></td>
+              <td>The worker pauses between files while the host's 1-minute load average is above this. Set to <code>0</code> to disable (not recommended on shared hosts).</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="3">Networking &amp; identity</td></tr>
+            <tr>
+              <td><code>SMS_BASE_URL</code></td>
+              <td><code>http://localhost:8000</code></td>
+              <td>Public URL of the app. Used for OIDC redirect URIs and the service-worker scope. Set to your reverse-proxy hostname.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_CONTACT</code></td>
+              <td><em>required for enrichment</em></td>
+              <td>Email address or project URL. MusicBrainz requires a reachable contact in the User-Agent and blocks clients that omit one.</td>
+            </tr>
+            <tr>
+              <td><code>SMS_DATABASE_URL</code></td>
+              <td><code>postgresql+psycopg://sms:sms@localhost/sms</code></td>
+              <td>SQLAlchemy-format Postgres connection string. The compose file sets this via <code>.sheetmusicshelf.env</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CLI reference -->
+      <div class="cli-section">
+        <h3>CLI quick reference</h3>
+        <p>The <code>sms</code> command runs inside the app container. All subcommands accept <code>--help</code>.</p>
+        <CodeBlock>{`# Collection management
+sms collection add /library/managed --name "Mozart Complete Piano"
+sms collection scan <id>          # propose new pieces
+sms collection list
+
+# Ingest (apply accepted proposals)
+sms ingest --apply                # move files, register pieces
+sms ingest --dry-run              # preview without changing anything
+
+# Composer authority records
+sms composer enrich               # fetch Wikidata portraits + bios
+sms composer list
+
+# Work authority records + canonical links
+sms work years                    # back-fill composition years from IMSLP
+sms work list
+
+# Database
+sms db upgrade                    # run pending migrations (done automatically at startup)
+sms db url                        # show configured database URL (password masked)`}</CodeBlock>
+      </div>
+    </div>
+  </section>
+
+  <StaffDivider />
+
+  <!-- ── Footer ────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer-brand">
+      <span class="brand-text">Sheet Music Shelf</span>
+      <p>MIT licence &middot; no tracking &middot; your library stays yours</p>
+    </div>
+    <nav class="footer-links" aria-label="Footer links">
+      <a href="https://github.com/stanstrup/sheetmusicshelf">GitHub</a>
+      <a href="https://github.com/stanstrup/sheetmusicshelf/releases">Releases</a>
+      <a href="https://github.com/stanstrup/sheetmusicshelf/issues">Issues</a>
+    </nav>
+  </footer>
+</Base>
+
+<style>
+  /* ── Shared ──────────────────────────────────────── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2.5rem;
+  }
+
+  /* ── Hero ────────────────────────────────────────── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 4rem;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 5rem 2.5rem 4.5rem;
+  }
+  .hero-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--navy);
+    margin-bottom: 0.75rem;
+  }
+  .hero-text h1 {
+    font-size: clamp(2.4rem, 5vw, 3.6rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 1rem;
+  }
+  .hero-text h1 em {
+    font-style: italic;
+    color: var(--navy);
+  }
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 40ch;
+    line-height: 1.7;
+    font-weight: 300;
+    margin-bottom: 2rem;
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1.4rem;
+    background: var(--navy);
+    color: #fff !important;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: var(--sky); text-decoration: none !important; }
+  .btn-primary.btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1.4rem;
+    background: var(--accent-light);
+    color: var(--navy) !important;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--border); text-decoration: none !important; }
+  .quick-cmd {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 6px;
+    padding: 0.65rem 1rem;
+    max-width: max-content;
+  }
+  .quick-cmd .dollar {
+    color: #6B7A9A;
+    user-select: none;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .quick-cmd code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--code-fg);
+    font-size: 0.82rem;
+  }
+
+  /* ── Screenshots ─────────────────────────────────── */
+  .screenshots-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 4.5rem 0 3.5rem;
+  }
+  .screenshots-scroll {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    padding: 0.5rem 2.5rem 1.5rem;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .screenshot-card {
+    flex: 0 0 auto;
+    width: min(820px, 90vw);
+    scroll-snap-align: center;
+  }
+  .caption {
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Features ────────────────────────────────────── */
+  .features-section {
+    padding: 5rem 0;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+  }
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.75rem;
+  }
+  .feature-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-light);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .feature-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--navy);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .feature h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.6rem;
+  }
+  .feature p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .feature p + p { margin-top: 0.5rem; }
+
+  /* ── Setup ───────────────────────────────────────── */
+  .setup-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 5rem 0;
+  }
+  .setup-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .setup-step {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 1.5rem;
+    padding: 2.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setup-step:last-child { border-bottom: none; }
+  .step-num {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+    padding-top: 0.15rem;
+  }
+  .step-body h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.75rem;
+  }
+  .step-body p {
+    font-size: 0.92rem;
+    color: var(--muted);
+    line-height: 1.65;
+    margin-bottom: 0.75rem;
+  }
+  .step-body ul {
+    margin: 0.5rem 0 0.75rem 1.2rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .step-body li { margin-bottom: 0.25rem; }
+  .action-link { margin-top: 1rem; }
+
+  /* ── Configuration ───────────────────────────────── */
+  .config-section { padding: 5rem 0; }
+  .config-table-wrap { overflow-x: auto; margin-bottom: 3rem; }
+  .config-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .config-table th {
+    text-align: left;
+    padding: 0.65rem 1rem;
+    background: var(--accent-light);
+    color: var(--navy);
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .config-table td {
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .config-table td:first-child { white-space: nowrap; }
+  .config-table td code { font-size: 0.82rem; }
+  .config-table tr:hover td { background: var(--accent-light); }
+  .config-table .group-header td {
+    background: var(--ground);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--navy);
+    padding: 0.5rem 1rem;
+  }
+  .cli-section h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+  }
+  .cli-section > p {
+    font-size: 0.92rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  /* ── Footer ──────────────────────────────────────── */
+  .footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 2rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .brand-text {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 700;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+  .footer-brand p { font-size: 0.8rem; color: var(--muted); }
+  .footer-links { display: flex; gap: 1.5rem; }
+  .footer-links a { font-size: 0.82rem; color: var(--muted); }
+  .footer-links a:hover { color: var(--ink); }
+
+  /* ── Responsive ──────────────────────────────────── */
+  @media (max-width: 860px) {
+    .hero {
+      grid-template-columns: 1fr;
+      padding: 3rem 1.5rem 2.5rem;
+      gap: 2.5rem;
+    }
+    .hero-sub { max-width: none; }
+    .container { padding: 0 1.5rem; }
+    .setup-step { grid-template-columns: 44px 1fr; gap: 1rem; }
+    .step-num { font-size: 1.8rem; }
+    .footer { flex-direction: column; align-items: flex-start; }
+  }
+</style>

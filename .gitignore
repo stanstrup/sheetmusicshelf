@@ -11,3 +11,6 @@ build/
 !.env.example
 .cache/
 scratch/
+website/node_modules/
+website/dist/
+website/.astro/
