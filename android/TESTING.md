@@ -126,8 +126,7 @@ lets the app save annotations. Both are ticked by default.
 The same thing from a shell inside the container, if you would rather:
 
 ```
-docker compose -f sheetmusicshelf.yml exec sheetmusicshelf ^
-  sms token create "tablet" --scope catalog:read --scope catalog:write
+docker compose -f sheetmusicshelf.yml exec sheetmusicshelf sms token create "tablet" --scope catalog:read --scope catalog:write
 ```
 
 A revoked token is not a mystery in the app: the catalogue screen says *"The
@@ -176,8 +175,8 @@ Emulator wants `10.0.2.2`, tablet wants `192.168.1.9`. From the tablet's
 browser, try `http://192.168.1.9:8014`; if that fails too it is the firewall
 rule, not the app.
 
-**"The token was refused"** — it has been revoked, or mistyped. `sms token
-list` shows which are live.
+**"The token was refused"** — it has been revoked, or mistyped. **Settings** in
+the web interface lists every token and shows which are still live.
 
 **The install button downloads but nothing happens** — Android is waiting for
 you to allow installs from the browser. It usually appears as a notification
