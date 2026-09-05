@@ -251,3 +251,13 @@ _(nothing outstanding — add items here)_
    anything: Android refuses to install an APK that is not newer than the one
    installed, and a version that never changes is a tablet that never updates.
    The app checks on launch and offers the new build if there is one.
+
+30) ~~making a token should not mean finding a shell in a container~~ — it is
+   in **Settings** in the web interface now: name it, tick what it may do,
+   press the button. Existing tokens are listed with what they may do and when
+   they were last used, and revoking is a button.
+
+   The secret is shown by answering the form with the page itself rather than
+   redirecting. A redirect would have to carry it in the query string, which
+   writes the one value in the system that is never recoverable into browser
+   history and into anything that logs a URL.

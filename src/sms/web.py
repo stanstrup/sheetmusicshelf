@@ -820,6 +820,111 @@ async def split_apply(
 
 # --- PWA ------------------------------------------------------------------
 
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Response:
+    """Tokens, and a link to the app."""
+    from .auth import SCOPES
+    from .models import ApiToken
+
+    viewer = _viewer(request, session)
+    _require_admin(viewer)
+    tokens = list(
+        session.scalars(
+            select(ApiToken).order_by(ApiToken.revoked_at.is_not(None), ApiToken.id.desc())
+        )
+    )
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "viewer": viewer,
+            "tokens": tokens,
+            "scopes": sorted(SCOPES.items()),
+            "minted": "",
+            "minted_name": "",
+        },
+    )
+
+
+@router.post("/settings/tokens")
+async def settings_mint(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Response:
+    """Create a token and show it once.
+
+    Answered with the page itself rather than a redirect. Redirecting would
+    have to carry the secret in the query string, which writes it into browser
+    history and into any log that records a URL -- for the one value in the
+    system that is never recoverable and never shown twice.
+    """
+    from .auth import SCOPES, mint_token
+    from .models import ApiToken
+
+    viewer = _viewer(request, session)
+    _require_admin(viewer)
+
+    form = await request.form()
+    name = (form.get("name") or "").strip() or "unnamed"
+    scopes = [s for s in form.getlist("scope") if s]
+    if not scopes:
+        # A token that may do nothing is not a useful object to have made.
+        scopes = ["catalog:read"]
+
+    secret, _row = mint_token(session, name, scopes, user_id=viewer.user_id)
+    commit_now(session)
+
+    tokens = list(
+        session.scalars(
+            select(ApiToken).order_by(ApiToken.revoked_at.is_not(None), ApiToken.id.desc())
+        )
+    )
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {
+            "viewer": viewer,
+            "tokens": tokens,
+            "scopes": sorted(SCOPES.items()),
+            "minted": secret,
+            "minted_name": name,
+        },
+    )
+
+
+@router.post("/settings/tokens/{token_id}/revoke")
+def settings_revoke(
+    token_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Stop a token working, at once and for good."""
+    from datetime import datetime, timezone
+
+    from .models import ApiToken
+
+    viewer = _viewer(request, session)
+    _require_admin(viewer)
+
+    token = session.get(ApiToken, token_id)
+    if token is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such token")
+    if token.revoked_at is None:
+        token.revoked_at = datetime.now(timezone.utc)
+    commit_now(session)
+    return RedirectResponse("/settings#tokens", status_code=status.HTTP_303_SEE_OTHER)
+
+
+def _require_admin(viewer) -> None:
+    """Tokens are keys to the whole catalogue, so only an administrator makes
+    them. In development, where authentication is off, everyone is one."""
+    if not viewer.can("admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "only an administrator can manage tokens")
+
+
 @router.get("/app", response_class=HTMLResponse)
 def app_page(request: Request, session: Session = Depends(get_session)) -> Response:
     """Where a tablet goes to install or update the Android client.

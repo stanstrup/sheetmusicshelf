@@ -700,3 +700,69 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: content-box; }
 ::-webkit-scrollbar-corner { background: transparent; }
+
+/* --- settings: tokens ---------------------------------------------------- */
+
+/* Shown once and never again, so it is hard to scroll past and easy to
+   select: the value is on its own line in monospace at a readable size. */
+.minted {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin: 18px 0 24px;
+}
+.minted h3 { margin: 0 0 8px; font-size: 15px; }
+.minted-value {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.minted-value code { font-size: 14px; user-select: all; white-space: nowrap; }
+.minted p:last-child { margin: 0; font-size: 14px; }
+
+.token-form { margin: 18px 0 8px; max-width: 46rem; }
+.token-form label { display: block; margin-bottom: 4px; font-size: 14px; }
+.token-form > label input {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  margin-top: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.token-form fieldset {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 5px;
+}
+.token-form legend { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-faint); }
+.token-form .scope { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.token-form .scope span { font-size: 14px; }
+
+table.tokens { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+table.tokens th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-faint);
+  font-weight: 600;
+  padding: 0 12px 6px 0;
+  border-bottom: 1px solid var(--rule);
+}
+table.tokens td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: middle; }
+table.tokens .scopes code { font-size: 11.5px; margin-right: 5px; }
+/* A revoked token is kept, because knowing one existed is part of the record,
+   but it should not read as something still in use. */
+table.tokens tr.revoked { opacity: .5; }
+table.tokens tr.revoked td:first-child { text-decoration: line-through; }
+.button.small { font-size: 12px; padding: 3px 10px; }

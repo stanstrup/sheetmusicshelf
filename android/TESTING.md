@@ -48,6 +48,9 @@ Server    192.168.1.9:8014
 Token     sms_a3-fk82ejQNZ9JccA9PrdhdGQhx5-SkzX4t1e-eJx04
 ```
 
+(That one already exists. To make your own, open **Settings** in the web
+interface and press *Make a token*.)
+
 Press **Save and test**. It should say *Connected*.
 
 ### Updating it later
@@ -110,18 +113,22 @@ for checking the app works — judge how it *feels* on the real tablet.
 
 ## The token
 
-The one above is real and current (`jan's phone`, read + annotate). It is
-stored hashed, so it cannot be recovered from the server — if it goes missing,
-make another and revoke that one:
+The one above is real and current (`jan's phone`, read + annotate).
 
-```
-sms token create "tablet" --scope catalog:read --scope catalog:write
-sms token list
-sms token revoke 2
-```
+To make another, open **Settings** in the web interface — there is a link in
+the header — and press *Make a token*. It is shown once and once only, because
+the server keeps a hash of it and nothing else. Losing one costs nothing:
+revoke it and make another.
 
 `catalog:read` alone is enough to browse and read. `catalog:write` is what
-lets the app save annotations.
+lets the app save annotations. Both are ticked by default.
+
+The same thing from a shell inside the container, if you would rather:
+
+```
+docker compose -f sheetmusicshelf.yml exec sheetmusicshelf ^
+  sms token create "tablet" --scope catalog:read --scope catalog:write
+```
 
 A revoked token is not a mystery in the app: the catalogue screen says *"The
 token was refused. Check it in Settings."*

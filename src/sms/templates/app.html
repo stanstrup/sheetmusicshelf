@@ -35,11 +35,14 @@
     </p>
 
     <h2>A token</h2>
-    <p>Make one on the server, and paste it into the app's settings:</p>
-    <pre><code>sms token create "tablet" --scope catalog:read --scope catalog:write</code></pre>
+    <p>
+      The app needs one to prove who it is.
+      <a href="/settings#tokens">Make one in Settings</a> and paste it in.
+    </p>
     <p class="muted small">
-      <code>catalog:read</code> alone is enough to browse and read;
-      <code>catalog:write</code> is what lets the app save annotations.
+      Tick <code>catalog:read</code> to browse and read, and
+      <code>catalog:write</code> as well if you want your annotations saved.
+      Both are ticked by default.
     </p>
   {% else %}
     <p class="lede">No app has been published yet.</p>

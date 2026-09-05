@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Settings &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<div class="reading">
+  <h1>Settings</h1>
+
+  <h2 id="tokens">Access tokens</h2>
+  <p class="lede">
+    A token is how a device or an agent proves who it is. The Android app needs
+    one; so does anything curating the catalogue through the API.
+  </p>
+
+  {% if minted %}
+    {# Shown once, because only the hash is stored. There is no page that can
+       ever show it again, so the copy is blunt about that. #}
+    <div class="minted">
+      <h3>Here is the token for &ldquo;{{ minted_name }}&rdquo;</h3>
+      <p class="minted-value"><code>{{ minted }}</code></p>
+      <p>
+        <strong>Copy it now.</strong> Only a hash of it is stored, so this is
+        the one and only time it can be shown. If you lose it, revoke it and
+        make another &mdash; that costs nothing.
+      </p>
+      <p class="muted small">
+        It is shown here rather than in the address bar on purpose: a secret in
+        a URL ends up in browser history. Reloading this page makes another
+        token rather than showing this one again.
+      </p>
+    </div>
+  {% endif %}
+
+  <form class="token-form" method="post" action="/settings/tokens">
+    <label>
+      What is it for
+      <input type="text" name="name" required maxlength="120"
+             placeholder="tablet" autocomplete="off">
+    </label>
+
+    <fieldset>
+      <legend>What it may do</legend>
+      {% for scope, description in scopes %}
+        <label class="scope">
+          <input type="checkbox" name="scope" value="{{ scope }}"
+                 {{ 'checked' if scope in ('catalog:read', 'catalog:write') }}>
+          <span><code>{{ scope }}</code> &mdash; {{ description }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+
+    <button class="button" type="submit">Make a token</button>
+    <p class="hint muted">
+      For the Android app, the two ticked by default are what it needs: reading
+      the catalogue, and writing your annotations back.
+    </p>
+  </form>
+
+  {% if tokens %}
+    <h3>Tokens that exist</h3>
+    <table class="tokens">
+      <thead>
+        <tr><th>Name</th><th>May do</th><th>Last used</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for token in tokens %}
+          <tr class="{{ 'revoked' if token.revoked_at }}">
+            <td>{{ token.name }}</td>
+            <td class="scopes">
+              {% for scope in token.scopes %}<code>{{ scope }}</code>{% endfor %}
+            </td>
+            <td class="muted small">
+              {% if token.revoked_at %}
+                revoked {{ token.revoked_at.strftime('%Y-%m-%d') }}
+              {% elif token.last_used_at %}
+                {{ token.last_used_at.strftime('%Y-%m-%d %H:%M') }}
+              {% else %}
+                never
+              {% endif %}
+            </td>
+            <td>
+              {% if not token.revoked_at %}
+                <form method="post" action="/settings/tokens/{{ token.id }}/revoke"
+                      onsubmit="return confirm('Revoke {{ token.name }}? Anything using it stops working immediately.');">
+                  <button class="button ghost small" type="submit">Revoke</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="hint muted">
+      Revoking takes effect at once. A device using a revoked token says so
+      plainly rather than showing an empty catalogue.
+    </p>
+  {% endif %}
+
+  <h2>The Android app</h2>
+  <p>
+    <a href="/app">Install it on a tablet</a> &mdash; the server hands out its
+    own client, so there is nothing to copy about.
+  </p>
+</div>
+{% endblock %}
