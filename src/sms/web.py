@@ -566,6 +566,30 @@ async def piece_delete(
 
 
 
+@router.post("/piece/{piece_id}/find-work")
+async def piece_find_work(
+    piece_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Create a work record for this piece (if possible) and go to its canonical-source page."""
+    from .enrich.works import find_or_create_work
+
+    _viewer(request, session)
+    piece = session.get(Piece, piece_id)
+    if piece is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
+
+    work, _ = find_or_create_work(session, piece)
+    if work is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "piece needs a composer and title before a work can be created")
+
+    piece.work_id = work.id
+    commit_now(session)
+    return RedirectResponse(f"/work/{work.id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 # --- works and canonical sources ------------------------------------------
 
 def catalogue_label(work: Work) -> str:

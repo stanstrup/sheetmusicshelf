@@ -72,6 +72,10 @@
       <p class="path"><code>{{ file.rel_path }}</code></p>
       {% if item.work_id %}
         <p class="path"><a href="/work/{{ item.work_id }}">Canonical sources &rarr;</a></p>
+      {% elif item.title and item.composer_name %}
+        <form method="post" action="/piece/{{ item.id }}/find-work" style="display:inline">
+          <button class="button ghost small" type="submit">Canonical sources &rarr;</button>
+        </form>
       {% endif %}
       <p class="score {{ item.route }}">
         <strong>{{ "%.2f"|format(item.confidence) }}</strong>

@@ -83,6 +83,21 @@
           <a href="/work/{{ work.id }}">Search and link one</a>.
         </p>
       </section>
+    {% elif piece.title and piece.composer_name %}
+      <section class="canonical">
+        <h2>Canonical sources</h2>
+        <p class="muted small">No work record yet.</p>
+        <form method="post" action="/piece/{{ piece.id }}/find-work">
+          <button class="button ghost small" type="submit">Create work and link &rarr;</button>
+        </form>
+      </section>
+    {% elif not piece.title or not piece.composer_name %}
+      <section class="canonical">
+        <h2>Canonical sources</h2>
+        <p class="muted small">Set a composer and title in
+          <a href="/review?piece={{ piece.id }}">review</a> first.
+        </p>
+      </section>
     {% endif %}
 
     {% if piece.review_state == 'accepted' %}
