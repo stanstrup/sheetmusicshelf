@@ -309,3 +309,15 @@ _(nothing outstanding — add items here)_
 34) ~~add it to start.bat~~ — beside calibre, with the homepage network
    placeholder the other stacks have, so disabling it later cannot break
    homepage's startup.
+
+35) ~~put it on the homepage dashboard~~ — in Media, beside the other
+   libraries, monitored on `/health` rather than on the front page: `/health`
+   answers without a session and reports the database too, so a green light
+   there means something.
+
+   Homepage had to join `sheetmusicshelf_default` to reach the container by
+   name. Adding that turned up a pre-existing fault: homepage also declares
+   `job-screen_default`, which nothing created, so `docker compose up` on
+   homepage failed outright and it had been running on an old container. Both
+   placeholders are in start.bat now, which is exactly what that block of
+   network creates is for.
