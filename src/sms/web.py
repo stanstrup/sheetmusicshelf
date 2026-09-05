@@ -461,12 +461,22 @@ async def review_submit(
             reviewer,
         )
         review_service.approve(session, piece, reviewer)
+    elif action == "save":
+        review_service.decide(
+            session, piece,
+            {name: form.get(name) or "" for name, _label in REVIEW_FIELDS},
+            reviewer,
+        )
     else:
         review_service.skip(session, piece)
 
     # Commit before the redirect: the dependency's own commit would land
     # after the browser has already fetched the next page.
     commit_now(session)
+
+    if action == "save":
+        # Stay on this piece so the user can continue editing or click canonical sources.
+        return RedirectResponse(f"/review?piece={piece_id}", status_code=status.HTTP_303_SEE_OTHER)
 
     # Reviewing one specific piece returns to it; working the queue moves on.
     if return_to.startswith("/") and not return_to.startswith("//"):
@@ -582,8 +592,16 @@ async def piece_find_work(
 
     work, _ = find_or_create_work(session, piece)
     if work is None:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            "piece needs a composer and title before a work can be created")
+        # Piece has no title yet — create a bare work so the user can still
+        # reach the canonical-source search page and link it by hand.
+        from .enrich.works import _composer_for
+        composer = _composer_for(session, piece.composer_name)
+        if composer is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                "piece needs a composer before a work can be created")
+        work = Work(composer_id=composer.id, title="", catalog_suffix="")
+        session.add(work)
+        session.flush()
 
     piece.work_id = work.id
     commit_now(session)

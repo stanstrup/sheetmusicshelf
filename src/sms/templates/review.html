@@ -72,10 +72,9 @@
       <p class="path"><code>{{ file.rel_path }}</code></p>
       {% if item.work_id %}
         <p class="path"><a href="/work/{{ item.work_id }}">Canonical sources &rarr;</a></p>
-      {% elif item.title and item.composer_name %}
-        <form method="post" action="/piece/{{ item.id }}/find-work" style="display:inline">
-          <button class="button ghost small" type="submit">Canonical sources &rarr;</button>
-        </form>
+      {% elif item.composer_name %}
+        <button class="button ghost small" type="submit"
+                formaction="/piece/{{ item.id }}/find-work" formmethod="post">Canonical sources &rarr;</button>
       {% endif %}
       <p class="score {{ item.route }}">
         <strong>{{ "%.2f"|format(item.confidence) }}</strong>
@@ -116,6 +115,7 @@
 
       <div class="review-actions">
         <button class="button" name="action" value="accept">Accept</button>
+        <button class="button ghost" name="action" value="save">Save fields</button>
         <button class="button ghost" name="action" value="skip">Skip</button>
         <button class="button danger" name="action" value="reject">Not music</button>
       </div>
@@ -123,6 +123,9 @@
         <dt>Accept</dt>
         <dd>Records these values as decisions. No later signal can outvote them
           and a re-scan will not disturb them. The piece leaves the queue.</dd>
+        <dt>Save fields</dt>
+        <dd>Records the typed values as decisions without accepting the piece.
+          It stays in the queue.</dd>
         <dt>Skip</dt>
         <dd>Changes nothing. The piece stays in the queue and comes round
           again, just behind the rest.</dd>
