@@ -1,8 +1,13 @@
 # Sheet Music Shelf -- copy to Z:\docker\compose\sheetmusicshelf.yml
 #
-# MUST be brought up from WSL space, or /mnt/z resolves to an empty path and the
-# library binds come up empty:
-#   wsl bash -c "cd /mnt/z/docker/compose && docker compose -f sheetmusicshelf.yml up -d"
+# Bring it up from WSL, like the rest of the stack. The library binds below are
+# /mnt/z paths, which only mean anything there:
+#
+#   cd /mnt/z/docker/compose
+#   docker compose -f sheetmusicshelf.yml up -d --build
+#
+# (The build context is relative to this file, so that part works from either
+# side. The volumes are what tie it to WSL.)
 #
 # Secrets live in .sheetmusicshelf.env and .sheetmusicshelf-db.env (gitignored
 # by the stack's *.env rule).  See .env.example in this repo.
@@ -13,7 +18,10 @@ services:
   sheetmusicshelf:
     image: sheetmusicshelf:latest
     build:
-      context: /mnt/z/docker/build/sheetmusicshelf
+      # Relative to this file, so it resolves whether compose is run from
+      # WSL or from Windows. An absolute /mnt/z path only works from WSL,
+      # and from Windows it is read as a subdirectory of this one.
+      context: ../build/sheetmusicshelf
     container_name: sheetmusicshelf
     labels:
       - "nautical-backup.enable=true"
@@ -71,6 +79,16 @@ services:
 
   sheetmusicshelf-worker:
     image: sheetmusicshelf:latest
+    # The same build as the app, and it has to say so: with only `image:` here,
+    # compose tries to *pull* sheetmusicshelf:latest from Docker Hub, where it
+    # does not exist, and the whole stack fails before it starts. Naming the
+    # build again costs nothing -- both services carry the same tag, so it is
+    # built once and reused.
+    build:
+      # Relative to this file, so it resolves whether compose is run from
+      # WSL or from Windows. An absolute /mnt/z path only works from WSL,
+      # and from Windows it is read as a subdirectory of this one.
+      context: ../build/sheetmusicshelf
     container_name: sheetmusicshelf-worker
     command: ["worker"]
     restart: unless-stopped
