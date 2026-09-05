@@ -322,7 +322,10 @@ may do, and copy the value once. Only a hash is stored, so there is no page
 that can ever show it again.
 
 All of these live in `.sheetmusicshelf.env` beside the compose file, never in
-the compose file itself. Nothing secret is named in `environment:` on purpose:
+the compose file itself, and that file ships filled in — the secret key and the
+database password are generated, so there is nothing to paste and no command to
+run before starting the stack. Only the password is worth changing, and there
+is a suggestion in place if you do not. Nothing secret is named in `environment:` on purpose:
 that block *overrides* `env_file:` rather than defaulting it, and `${VAR}`
 there interpolates from the shell running compose rather than from the env
 file — so naming one would resolve it to empty and quietly switch the setting

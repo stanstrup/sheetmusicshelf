@@ -25,7 +25,6 @@ services:
     env_file: .sheetmusicshelf.env
     environment:
       TZ: Europe/Copenhagen
-      SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
       SMS_MANAGED_ROOT: /library/managed
       SMS_INGEST_ROOT: /library/ingest
       # Where `android/tools/publish.cmd` puts the APK, so a tablet can install
@@ -38,6 +37,7 @@ services:
       # Everything secret or per-installation comes from .sheetmusicshelf.env
       # and is deliberately NOT repeated here:
       #
+      #   SMS_DATABASE_URL where Postgres is, password included
       #   SMS_SECRET_KEY   signs the session cookie
       #   SMS_PASSWORD     one shared password for the whole library
       #   SMS_OIDC_*       authentik instead, which wins if both are set
@@ -77,11 +77,12 @@ services:
     env_file: .sheetmusicshelf.env
     environment:
       TZ: Europe/Copenhagen
-      SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
       SMS_MANAGED_ROOT: /library/managed
       SMS_INGEST_ROOT: /library/ingest
       SMS_APK_ROOT: /library/managed/_app
       SMS_CACHE_ROOT: /cache
+      # SMS_DATABASE_URL and the rest come from .sheetmusicshelf.env, for the
+      # reason given on the app service above.
       # The worker pauses between files while the 1-minute load average is above
       # this.  On a 4-core box carrying ~45 containers, a scan that ignores load
       # is not a slow scan -- it is an outage for everything else.
