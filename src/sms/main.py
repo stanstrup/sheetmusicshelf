@@ -13,7 +13,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
-from .api import annotations, catalog, collections, composers, curation, pages, shelves
+from .api import (
+    annotations,
+    app_release,
+    catalog,
+    collections,
+    composers,
+    curation,
+    pages,
+    shelves,
+)
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import engine
@@ -76,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(collections.router, prefix=api_prefix)
     app.include_router(curation.router, prefix=api_prefix)
     app.include_router(pages.router, prefix=api_prefix)
+    app.include_router(app_release.router, prefix=api_prefix)
     app.include_router(composers.router, prefix=api_prefix)
     app.include_router(shelves.router, prefix=api_prefix)
     app.include_router(shelves.personal_router, prefix=api_prefix)

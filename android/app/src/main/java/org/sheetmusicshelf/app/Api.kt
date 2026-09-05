@@ -136,12 +136,33 @@ class Api(context: Context) {
         body(http.newCall(request("/api/v1/pieces/$pieceId/annotations/$page").put(payload).build()).execute())
     }
 
+
+    /**
+     * The version of this app the server is offering, or null if none.
+     *
+     * The app compares it with its own and says nothing unless there is
+     * something newer, so a tablet that is up to date is never nagged.
+     */
+    fun offeredVersion(): Offered? {
+        val json = JSONObject(body(http.newCall(request("/api/v1/app/version").build()).execute()))
+        if (!json.optBoolean("available")) return null
+        return Offered(
+            versionCode = json.optInt("versionCode"),
+            versionName = if (json.isNull("versionName")) "" else json.optString("versionName"),
+            url = base() + json.optString("url"),
+        )
+    }
+
     /** A cheap call that proves the address and token are both right. */
     fun check(): String {
         val json = JSONArray(body(http.newCall(request("/api/v1/pieces?limit=1").build()).execute()))
         return if (json.length() > 0) "Connected" else "Connected, but the catalogue is empty"
     }
 }
+
+/** A build the server has, described well enough to decide about. */
+data class Offered(val versionCode: Int, val versionName: String, val url: String)
+
 
 data class Piece(
     val id: Int,

@@ -2,6 +2,7 @@ package org.sheetmusicshelf.app
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -15,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
+import com.google.android.material.snackbar.Snackbar
 import org.sheetmusicshelf.app.databinding.ActivityBrowseBinding
 import java.util.concurrent.Executors
 
@@ -34,6 +36,7 @@ class BrowseActivity : AppCompatActivity() {
     private val work = Executors.newSingleThreadExecutor()
     private val adapter = PieceAdapter { open(it) }
     private var filters = Filters()
+    private var updateOffered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +84,38 @@ class BrowseActivity : AppCompatActivity() {
             return
         }
         load()
+        checkForUpdate()
+    }
+
+    /**
+     * Ask once per launch whether the server has a newer build.
+     *
+     * Silent when there is nothing to say. The download goes to the browser
+     * rather than being installed from here: sideloading needs the install
+     * permission, and the browser already has a way to ask for it that a
+     * person recognises.
+     */
+    private fun checkForUpdate() {
+        if (updateOffered) return
+        work.execute {
+            val offered = try {
+                api.offeredVersion()
+            } catch (_: Exception) {
+                null
+            } ?: return@execute
+            val mine = packageManager.getPackageInfo(packageName, 0).longVersionCode
+            if (offered.versionCode <= mine) return@execute
+            runOnUiThread {
+                updateOffered = true
+                Snackbar.make(
+                    views.root,
+                    getString(R.string.update_available, offered.versionName),
+                    Snackbar.LENGTH_LONG,
+                ).setAction(R.string.get_it) {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(offered.url)))
+                }.show()
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

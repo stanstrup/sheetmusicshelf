@@ -1,8 +1,7 @@
 # TODO
 
-* can we make scrollbars smaller and dark?
-* http://localhost:8014/piece/26 has the id for teh musicbrainz name instead of the name of the piece. that is becauise it was imported before we changed that. can you fix all over?
-
+*  app: the ... button has almost white on white.
+*  app: needs a dark mode.
 
 _(nothing outstanding — add items here)_
 
@@ -237,3 +236,18 @@ _(nothing outstanding — add items here)_
    *by id* rather than searching again, so an established link cannot drift
    onto a different work. All 58 now show a name; /piece/26 reads "Sonata for
    Piano no. 5 in G major, K. 189h/283".
+
+* can we make scrollbars smaller and dark?
+* http://localhost:8014/piece/26 has the id for teh musicbrainz name instead of the name of the piece. that is becauise it was imported before we changed that. can you fix all over?
+
+29) ~~an easy way to update the app on the tablet~~ — the server hands out its
+   own client. Open `/app` on the tablet and press Install; updating later is
+   the same page again. No git remote, no release, no account, and nothing
+   needing the tablet to have internet — which is the assumption this project
+   spent its design deciding not to make.
+
+   `android/tools/publish.cmd` builds and publishes. The version is the commit
+   count, so every build is newer than the last without anybody bumping
+   anything: Android refuses to install an APK that is not newer than the one
+   installed, and a version that never changes is a tablet that never updates.
+   The app checks on launch and offers the new build if there is one.

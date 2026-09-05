@@ -28,6 +28,9 @@ services:
       SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
       SMS_MANAGED_ROOT: /library/managed
       SMS_INGEST_ROOT: /library/ingest
+      # Where `android/tools/publish.cmd` puts the APK, so a tablet can install
+      # and update from the same server it reads music from.
+      SMS_APK_ROOT: /library/managed/_app
       SMS_CACHE_ROOT: /cache
       SMS_BASE_URL: https://sheetmusic.agnostan.org
       SMS_OIDC_ISSUER: https://auth.agnostan.org/application/o/sheetmusicshelf/

@@ -1,6 +1,23 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+}
+
+/** How many commits deep the tree is; 1 when git cannot be asked. */
+fun gitCommitCount(): Int = try {
+    val out = ByteArrayOutputStream()
+    exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        standardOutput = out
+        errorOutput = ByteArrayOutputStream()
+        workingDir = rootDir
+        isIgnoreExitValue = true
+    }
+    out.toString().trim().toIntOrNull() ?: 1
+} catch (_: Exception) {
+    1
 }
 
 android {
@@ -13,8 +30,12 @@ android {
         // newer API, and the server does the rendering.
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // Derived from the commit count, so every build is newer than the last
+        // one without anybody remembering to bump it. Android will not install
+        // an APK whose versionCode is not greater than the installed one, and
+        // a version that never changes is a tablet that never updates.
+        versionCode = gitCommitCount()
+        versionName = "1.0.${gitCommitCount()}"
     }
 
     buildTypes {

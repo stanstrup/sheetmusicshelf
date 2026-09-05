@@ -40,6 +40,9 @@
     <string name="narrow_the_list">Type to narrow the list</string>
     <string name="one_collection">One collection</string>
 
+    <string name="update_available">Version %1$s is available</string>
+    <string name="get_it">Get it</string>
+
     <plurals name="pieces_found">
         <item quantity="one">%d piece</item>
         <item quantity="other">%d pieces</item>

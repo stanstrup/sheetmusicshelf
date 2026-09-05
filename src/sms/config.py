@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     ingest_root: Path = Path("/library/ingest")
     #: Thumbnails and extracted text.  A named volume, never the CIFS share.
     cache_root: Path = Path("/cache")
+    #: Where a published Android APK is read from, so the tablet can install
+    #: from the server it already talks to.  Inside the library mount, because
+    #: that is already shared with the host and needs no new volume.
+    apk_root: Path = Path("/library/managed/_app")
 
     # --- behaviour --------------------------------------------------------
     auto_accept: float = 0.80
@@ -75,7 +79,10 @@ class Settings(BaseSettings):
             )
         return f"SheetMusicShelf/0.1 ( {self.contact.strip()} )"
 
-    @field_validator("source_root", "managed_root", "cache_root", "ingest_root", mode="before")
+    @field_validator(
+        "source_root", "managed_root", "cache_root", "ingest_root", "apk_root",
+        mode="before",
+    )
     @classmethod
     def _as_path(cls, value: object) -> object:
         return Path(str(value)) if value else value

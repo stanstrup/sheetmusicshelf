@@ -820,6 +820,29 @@ async def split_apply(
 
 # --- PWA ------------------------------------------------------------------
 
+@router.get("/app", response_class=HTMLResponse)
+def app_page(request: Request, session: Session = Depends(get_session)) -> Response:
+    """Where a tablet goes to install or update the Android client.
+
+    The tablet is already on this network and already talks to this server, so
+    the server hands it its own client. That is the whole update mechanism:
+    open the page, press the button.
+    """
+    from .api.app_release import APK_NAME, current
+
+    viewer = _viewer(request, session)
+    return templates.TemplateResponse(
+        request,
+        "app.html",
+        {
+            "viewer": viewer,
+            "release": current(),
+            "apk_name": APK_NAME,
+            "apk_root": get_settings().apk_root,
+        },
+    )
+
+
 @router.get("/manifest.webmanifest")
 def manifest() -> JSONResponse:
     """What Android needs to install this as an app rather than a bookmark."""

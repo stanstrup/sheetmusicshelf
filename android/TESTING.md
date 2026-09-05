@@ -31,7 +31,25 @@ Token     (see below)
 `localhost` will *not* work from inside the emulator — that is the emulator
 itself.
 
-## B. On your own phone
+## B. On your own phone or tablet
+
+The easy way, once the firewall rule below is in place: open
+**`http://192.168.1.9:8014/app`** in the tablet's browser and press Install.
+The server hands out its own client, so there is no file to copy about and no
+account anywhere.
+
+Publish a build with `android	ools\publish.cmd` — it builds, copies the APK
+to `Z:\Books\SheetMusic\_app`, and writes the version beside it. Updating the
+tablet later is the same page again: Android installs it over the old one and
+keeps the address and token you entered.
+
+The version comes from the commit count, so every build is newer than the last
+without anybody bumping anything — Android refuses to install an APK that is
+not newer than the one already on the device, and a version that never changes
+is a tablet that never updates. The app also checks on launch and offers the
+new one if there is one.
+
+## B2. The manual way
 
 The phone talks to the server over the LAN, so it needs the PC's real address
 and a hole in the firewall.

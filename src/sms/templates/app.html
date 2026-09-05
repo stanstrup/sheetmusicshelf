@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}The app &middot; Sheet Music Shelf{% endblock %}
+
+{% block content %}
+<div class="reading">
+  <h1>Sheet Music Shelf for Android</h1>
+
+  {% if release %}
+    <p class="lede">
+      Browse, read and annotate the catalogue from a tablet on the stand.
+    </p>
+
+    <p>
+      <a class="button install" href="/api/v1/app/{{ apk_name }}">
+        Install version {{ release.version_name }}
+      </a>
+    </p>
+
+    <p class="muted small">
+      {{ release.megabytes }}&thinsp;MB &middot; built {{ release.built_at }}
+      &middot; Android 8 and later
+    </p>
+
+    <h2>Installing it</h2>
+    <ol class="steps">
+      <li>Open this page <strong>on the tablet</strong> and press the button.</li>
+      <li>Android will ask whether to allow installing apps from your browser.
+        Say yes — this file comes from your own server on your own network.</li>
+      <li>Open the app and enter this server's address and a token.</li>
+    </ol>
+
+    <p class="muted small">
+      Updating is the same thing again: press the button and it installs over
+      the old one, keeping the address and token you already entered.
+    </p>
+
+    <h2>A token</h2>
+    <p>Make one on the server, and paste it into the app's settings:</p>
+    <pre><code>sms token create "tablet" --scope catalog:read --scope catalog:write</code></pre>
+    <p class="muted small">
+      <code>catalog:read</code> alone is enough to browse and read;
+      <code>catalog:write</code> is what lets the app save annotations.
+    </p>
+  {% else %}
+    <p class="lede">No app has been published yet.</p>
+    <p>
+      Build and publish one with <code>android\tools\publish.cmd</code>. It
+      copies the APK to <code>{{ apk_root }}</code>, where this page will find
+      it.
+    </p>
+  {% endif %}
+</div>
+{% endblock %}
