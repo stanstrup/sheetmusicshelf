@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.0.2...v1.1.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* gradlew execute bit; bump setup-java to v5 ([346fd1f](https://github.com/stanstrup/sheetmusicshelf/commit/346fd1f869a2114dc232489a6657e86e476b1325))
+
+
+### Features
+
+* build and release Android APK; add Android section to website ([1fb40d5](https://github.com/stanstrup/sheetmusicshelf/commit/1fb40d529d13da3bf638ae356eaedd0dc6215c9d))
+
 ## [1.0.2](https://github.com/stanstrup/sheetmusicshelf/compare/v1.0.1...v1.0.2) (2026-09-05)
 
 
