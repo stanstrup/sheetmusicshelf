@@ -22,6 +22,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -99,7 +100,6 @@ class Work(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     composer_id: Mapped[int | None] = mapped_column(ForeignKey("composer.id", ondelete="SET NULL"), index=True)
-    parent_work_id: Mapped[int | None] = mapped_column(ForeignKey("work.id", ondelete="CASCADE"), index=True)
 
     title: Mapped[str] = mapped_column(Text, index=True)
     #: Split rather than stored raw, so K.9 sorts before K.10.
@@ -137,7 +137,6 @@ class Work(Base):
     created_at = _now()
 
     composer: Mapped[Composer | None] = relationship(back_populates="works")
-    parent: Mapped["Work | None"] = relationship(remote_side=[id], backref="movements")
     pieces: Mapped[list["Piece"]] = relationship(back_populates="work")
 
     @property
@@ -250,9 +249,11 @@ class Piece(Base):
     music_key: Mapped[str | None] = mapped_column(String(32), index=True)
     form: Mapped[str | None] = mapped_column(String(80), index=True)
     #: What the music is scored for, as a phrase: "solo piano", "violin and
-    #: piano".  A denormalised string rather than a link to :class:`Instrument`
-    #: because that is the shape the adapters can actually observe -- a folder
-    #: called "violpian" says "violin and piano" and nothing finer.
+    #: piano".  A string rather than a link to an instrument table, because
+    #: that is the shape the adapters can actually observe: a folder called
+    #: "violpian" says "violin and piano" and nothing finer.  There were such
+    #: tables; nothing ever wrote to them, and dead schema is an invitation to
+    #: write against it.
     instrumentation: Mapped[str | None] = mapped_column(String(120), index=True)
     #: Which movement of its work this file holds, when the work is split over
     #: several files.  None for the ordinary case of one file, one piece.
@@ -292,9 +293,6 @@ class Piece(Base):
     candidates: Mapped[list["FieldCandidate"]] = relationship(
         back_populates="piece", cascade="all, delete-orphan"
     )
-    instruments: Mapped[list["PieceInstrument"]] = relationship(
-        back_populates="piece", cascade="all, delete-orphan"
-    )
 
     @property
     def page_count(self) -> int:
@@ -313,6 +311,16 @@ class FieldCandidate(Base):
     __table_args__ = (
         Index("ix_candidate_piece_field", "piece_id", "field"),
         UniqueConstraint("piece_id", "field", "source", "value", name="uq_candidate"),
+        # At most one accepted value per field.  `accept_value` already clears
+        # the previous one, but that is a promise made in code about the rule
+        # this whole design rests on -- and with two accepted rows `recompute`
+        # would silently take whichever the database returned first.
+        Index(
+            "uq_candidate_accepted",
+            "piece_id", "field",
+            unique=True,
+            postgresql_where=text("accepted"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -337,25 +345,6 @@ class FieldCandidate(Base):
 
 
 # --- vocabulary and grouping ---------------------------------------------
-
-class Instrument(Base):
-    __tablename__ = "instrument"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(80), unique=True, index=True)
-    aliases: Mapped[list] = mapped_column(JSONB, default=list)
-
-
-class PieceInstrument(Base):
-    __tablename__ = "piece_instrument"
-
-    piece_id: Mapped[int] = mapped_column(ForeignKey("piece.id", ondelete="CASCADE"), primary_key=True)
-    instrument_id: Mapped[int] = mapped_column(ForeignKey("instrument.id", ondelete="CASCADE"), primary_key=True)
-    role: Mapped[str] = mapped_column(String(20), default="solo")
-
-    piece: Mapped[Piece] = relationship(back_populates="instruments")
-    instrument: Mapped[Instrument] = relationship()
-
 
 class Shelf(Base):
     """A user-defined collection.  Ordered, so a shelf doubles as a setlist."""

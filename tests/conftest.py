@@ -50,7 +50,13 @@ def engine():
     except Exception as exc:                          # no database to hand
         pytest.skip(f"no test database at {_url()}: {exc}")
 
-    Base.metadata.drop_all(engine)
+    # Drop the schema rather than the metadata's tables: a table that has been
+    # removed from the models is still in the scratch database from the last
+    # run, and `drop_all` cannot drop what it no longer knows about -- it just
+    # fails on the dependency.
+    with engine.begin() as connection:
+        connection.execute(text("DROP SCHEMA public CASCADE"))
+        connection.execute(text("CREATE SCHEMA public"))
     Base.metadata.create_all(engine)
     yield engine
     engine.dispose()

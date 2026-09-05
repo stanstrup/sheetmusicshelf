@@ -177,9 +177,16 @@ hands are on the keys.
   the browser drops the lock whenever the tab is hidden.
 - **Full** goes fullscreen.
 
-There is no native Android client, and it is not currently needed: offline
-access was explicitly out of scope, and in-app annotation now works in the
-browser. Those were the two things a native app would have bought.
+There is a native Android client in `android/` — browse with the same facets,
+read, and annotate. It was built after this paragraph claimed it was not
+needed, which was a fair reading at the time: offline was out of scope and
+annotation already worked in the browser, so the two things a native app would
+classically buy were gone. What it buys instead is a reader that behaves like
+an app on the stand — no browser chrome, no address bar, the screen kept awake.
+
+It is a client of the same API and writes the same annotation rows, so marks
+made on the phone appear in the browser. See `android/README.md` to build it
+and `android/TESTING.md` to run it.
 
 ### Why pages are rendered server-side
 
@@ -310,9 +317,14 @@ Choices made against that host, not against a clean slate:
   enforces it if the code ever gets it wrong.
 - **No Redis.** The job queue is a Postgres table claimed with
   `FOR UPDATE SKIP LOCKED`. Sufficient at this scale, one fewer service.
-- **No search engine.** Postgres full-text over a few thousand works.
-- **No bulk OCR.** Only 12.7% of the library has a text layer, and a background
-  pass over the rest would tax the box for days. OCR is an on-demand button.
+- **No search engine, and not even full-text.** Free text is matched word by
+  word with `ILIKE` across title, composer, catalogue number and key. At a few
+  thousand rows an index buys nothing, and this way each word may match a
+  different column — which is what makes "mozart fantasy" work, since no one
+  column holds both.
+- **No OCR at all, yet.** Only 12.7% of the library has a text layer, and a
+  background pass over the rest would tax the box for days. If it is ever
+  added it should be a button on a piece, not a sweep.
 - **The worker throttles on load average.** A scan that ignores a busy NUC is
   not a slow scan, it is an outage for everything else on the machine.
 - Thumbnails go on a named volume, not CIFS — the same reason SQLite configs do.
