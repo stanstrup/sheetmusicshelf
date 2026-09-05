@@ -38,7 +38,7 @@ The easy way, once the firewall rule below is in place: open
 The server hands out its own client, so there is no file to copy about and no
 account anywhere.
 
-Publish a build with `android	ools\publish.cmd` — it builds, copies the APK
+Publish a build with `android\tools\publish.cmd` — it builds, copies the APK
 to `Z:\Books\SheetMusic\_app`, and writes the version beside it. Updating the
 tablet later is the same page again: Android installs it over the old one and
 keeps the address and token you entered.
@@ -143,6 +143,7 @@ token was refused. Check it in Settings."*
 | `emulator.cmd` | Start the test phone |
 | `devices.cmd` | What is attached right now |
 | `logs.cmd` | Follow the app's log; Ctrl+C stops |
+| `publish.cmd` | Build and hand it to the server, for `/app` to give out |
 
 ## If something goes wrong
 
