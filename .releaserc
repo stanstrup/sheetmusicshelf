@@ -1,0 +1,43 @@
+{
+  "branches": ["master"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]"
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "mkdir -p _dist && cp deploy/sheetmusicshelf.yml _dist/ && cp .env.example _dist/ && cd _dist && zip -r ../sheetmusicshelf-starter-pack.zip . && cd .."
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "sheetmusicshelf-starter-pack.zip",
+            "label": "Starter pack (compose + env template)"
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "publishCmd": "docker tag $DOCKER_IMAGE:latest $DOCKER_IMAGE:${nextRelease.version} && docker push $DOCKER_IMAGE:${nextRelease.version}"
+      }
+    ]
+  ]
+}

@@ -2,26 +2,30 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [master]
+  workflow_dispatch:
 
-permissions:
-  contents: write
-  packages: write
+concurrency:
+  group: release
+  cancel-in-progress: false   # never abort a release mid-flight
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write     # push CHANGELOG commit + create release/tag
+      packages: write     # push Docker image to ghcr.io
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # semantic-release needs full history
+          persist-credentials: false
 
-      - name: Build starter pack
+      - name: Configure git for release commit
         run: |
-          mkdir -p _pack
-          cp deploy/sheetmusicshelf.yml _pack/sheetmusicshelf.yml
-          cp .env.example _pack/.env.example
-          cd _pack
-          zip -r ../sheetmusicshelf-starter-pack-${{ github.ref_name }}.zip .
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -30,37 +34,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+      - name: Set image name (lowercase)
+        run: |
+          echo "DOCKER_IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (latest)
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.DOCKER_IMAGE }}:latest
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/setup-node@v4
         with:
-          files: sheetmusicshelf-starter-pack-${{ github.ref_name }}.zip
-          generate_release_notes: true
-          body: |
-            ## Quick start
+          node-version: 20
+          cache: npm
 
-            1. Download `sheetmusicshelf-starter-pack-${{ github.ref_name }}.zip` below
-            2. Extract into your compose directory (e.g. `Z:\docker\compose\`)
-            3. Fill in `.env.example` → rename to `.sheetmusicshelf.env`
-            4. From WSL: `docker compose -f sheetmusicshelf.yml up -d`
+      - run: npm ci
 
-            The Docker image is available at `ghcr.io/${{ github.repository }}:${{ github.ref_name }}`.
-
-            > **Note:** Run compose from WSL so the `/mnt/z/Books/SheetMusic` bind mounts resolve.
+      - name: Semantic release
+        env:
+          # GH_TOKEN must be a PAT (classic, repo scope) stored as a repository
+          # secret. GITHUB_TOKEN cannot push to protected branches and does not
+          # trigger downstream workflows. Create one at:
+          #   https://github.com/settings/tokens
+          # then add it to Settings → Secrets → Actions → New repository secret.
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npx semantic-release
