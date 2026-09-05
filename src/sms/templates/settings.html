@@ -5,6 +5,56 @@
 <div class="reading">
   <h1>Settings</h1>
 
+  <h2 id="authentication">Who you are signed in as</h2>
+  {% if viewer.via == "open" %}
+    <div class="warn-box">
+      <p>
+        <strong>Nobody, and that is deliberate.</strong> This server is running
+        with <code>SMS_AUTH_DISABLED</code> set, so it asks nobody to sign in
+        and treats every visitor as an administrator. There is no
+        <em>&ldquo;dev&rdquo;</em> account and no password anywhere &mdash; the
+        name is a placeholder for &ldquo;whoever is looking&rdquo;.
+      </p>
+      <p>
+        It is a development setting. The app refuses to start with it set
+        unless <code>SMS_DEBUG</code> is also set, so it cannot be left on by
+        accident in the deployed stack.
+      </p>
+      <p class="muted small">
+        To turn authentication on, remove <code>SMS_AUTH_DISABLED</code> and
+        set <code>SMS_OIDC_ISSUER</code>, <code>SMS_OIDC_CLIENT_ID</code> and
+        <code>SMS_OIDC_CLIENT_SECRET</code> to an authentik application. Those
+        live in <code>.sheetmusicshelf.env</code> beside the compose file; the
+        compose file passes them in and holds no secrets itself.
+      </p>
+    </div>
+  {% elif viewer.via == "password" %}
+    <p>Signed in with the library's shared password.</p>
+    <p class="muted small">
+      One password for the whole library, set as <code>SMS_PASSWORD</code> in
+      <code>.sheetmusicshelf.env</code> beside the compose file. There are no
+      accounts: anyone with the password has the run of the catalogue, which is
+      the right shape for one household and the wrong one for more than that.
+      Changing it means editing that file and restarting the stack, which signs
+      every device out.
+    </p>
+    <p class="muted small">
+      For real accounts, set <code>SMS_OIDC_ISSUER</code>,
+      <code>SMS_OIDC_CLIENT_ID</code> and <code>SMS_OIDC_CLIENT_SECRET</code>
+      to an authentik application. That takes precedence over the password.
+    </p>
+    <p><a href="/auth/logout">Sign out of this browser</a></p>
+  {% else %}
+    <p>
+      Signed in as <strong>{{ viewer.display_name }}</strong> through authentik{%
+        if viewer.is_admin %}, as an administrator{% endif %}.
+    </p>
+    <p class="muted small">
+      This server keeps no passwords: it trusts the identity authentik vouches
+      for, and holds only the tokens below, hashed.
+    </p>
+  {% endif %}
+
   <h2 id="tokens">Access tokens</h2>
   <p class="lede">
     A token is how a device or an agent proves who it is. The Android app needs

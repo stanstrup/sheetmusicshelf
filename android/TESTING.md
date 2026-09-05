@@ -134,6 +134,21 @@ token was refused. Check it in Settings."*
 
 ---
 
+## Signing in to the web interface
+
+The dev server on this machine runs with `SMS_AUTH_DISABLED=true`, so it asks
+nobody to sign in and the header says *authentication off*. There is no "dev"
+account and no password: the name it used to show was a placeholder for
+"whoever is looking".
+
+For the deployed stack, set **`SMS_PASSWORD`** in
+`Z:\docker\compose\.sheetmusicshelf.env` — one password for the whole
+library, typed once on each device. Or set the three `SMS_OIDC_*` values for
+authentik accounts, which take precedence.
+
+The app does not use either: it authenticates with a token, which is
+independent of how people sign in to the browser.
+
 ## What to try
 
 - **Browse** — the **Filter** button opens the facets: composer, period, form,

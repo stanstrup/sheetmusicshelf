@@ -17,6 +17,8 @@ from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.orm import Session
 
 from .auth import Principal, current_principal
+from datetime import datetime, timedelta, timezone
+
 from .config import get_settings
 from .db import commit_now, get_session
 from .catalog_query import Filters, all_facets, base_query, narrow
@@ -89,7 +91,15 @@ def _viewer(request: Request, session: Session) -> Principal:
     try:
         return current_principal(request, session)
     except HTTPException:
-        raise HTTPException(status.HTTP_307_TEMPORARY_REDIRECT, headers={"Location": "/auth/login"})
+        # Carry where they were going, so signing in lands there rather than
+        # dropping them at the front page to navigate back.
+        from urllib.parse import quote
+
+        target = quote(request.url.path + ("?" + request.url.query if request.url.query else ""))
+        raise HTTPException(
+            status.HTTP_307_TEMPORARY_REDIRECT,
+            headers={"Location": f"/auth/login?next={target}"},
+        )
 
 
 def _filtered(session: Session, params: dict):
@@ -1026,18 +1036,106 @@ def _oauth():
     return oauth
 
 
+#: Wrong guesses per address before that address is asked to wait.  Generous
+#: enough for a mistyped password on a tablet keyboard, small enough that
+#: guessing is not a strategy.
+MAX_ATTEMPTS = 8
+LOCKOUT = timedelta(minutes=5)
+
+#: address -> (failures, when the lockout ends).  In memory on purpose: this is
+#: one household on a private network, and a restart clearing it is a feature,
+#: not a hole.
+_attempts: dict[str, tuple[int, datetime]] = {}
+
+
+def _caller(request: Request) -> str:
+    return (request.client.host if request.client else "?") or "?"
+
+
+def _locked_until(request: Request) -> datetime | None:
+    failures, until = _attempts.get(_caller(request), (0, datetime.min.replace(tzinfo=timezone.utc)))
+    now = datetime.now(timezone.utc)
+    if failures >= MAX_ATTEMPTS and until > now:
+        return until
+    return None
+
+
+def _note_failure(request: Request) -> None:
+    caller = _caller(request)
+    failures, _ = _attempts.get(caller, (0, datetime.now(timezone.utc)))
+    _attempts[caller] = (failures + 1, datetime.now(timezone.utc) + LOCKOUT)
+
+
+def _clear_failures(request: Request) -> None:
+    _attempts.pop(_caller(request), None)
+
+
 @auth_router.get("/login")
 async def login(request: Request):
     settings = get_settings()
+
+    if settings.password_enabled:
+        until = _locked_until(request)
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {
+                "next_url": request.query_params.get("next", "/"),
+                "error": "Too many attempts. Try again in a few minutes." if until else "",
+                "locked": bool(until),
+            },
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS if until else status.HTTP_200_OK,
+        )
+
     if not settings.oidc_enabled:
         if settings.auth_disabled:
             return RedirectResponse("/")
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "No identity provider is configured. Set SMS_OIDC_ISSUER and SMS_OIDC_CLIENT_ID.",
+            "No way to sign in is configured. Set SMS_PASSWORD, or SMS_OIDC_ISSUER "
+            "and SMS_OIDC_CLIENT_ID for authentik.",
         )
     oauth = _oauth()
     return await oauth.authentik.authorize_redirect(request, f"{settings.base_url}/auth/callback")
+
+
+@auth_router.post("/login")
+async def login_submit(request: Request):
+    """Check the shared password and start a session."""
+    from .auth import PASSWORD_SUBJECT, password_matches
+
+    settings = get_settings()
+    if not settings.password_enabled:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no password is configured")
+
+    form = await request.form()
+    target = (form.get("next") or "/").strip()
+    # Only ever back into this site, so a crafted link cannot bounce somebody
+    # through the login form and out to somewhere else.
+    if not target.startswith("/") or target.startswith("//"):
+        target = "/"
+
+    if _locked_until(request) is not None:
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"next_url": target, "error": "Too many attempts. Try again in a few minutes.",
+             "locked": True},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    if not password_matches(form.get("password") or ""):
+        _note_failure(request)
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"next_url": target, "error": "That is not the password.", "locked": False},
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    _clear_failures(request)
+    request.session["sub"] = PASSWORD_SUBJECT
+    return RedirectResponse(target, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @auth_router.get("/callback")

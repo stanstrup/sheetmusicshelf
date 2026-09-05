@@ -294,6 +294,40 @@ after guesses that review will change.
 
 ---
 
+## Signing in
+
+Three modes, in the order the server prefers them.
+
+**Authentik (OIDC).** Set `SMS_OIDC_ISSUER`, `SMS_OIDC_CLIENT_ID` and
+`SMS_OIDC_CLIENT_SECRET`. Real accounts, and the server stores no passwords at
+all — it trusts the identity authentik vouches for. Right when the stack
+already runs authentik.
+
+**One shared password.** Set `SMS_PASSWORD`. Everyone types the same thing and
+anyone who has it has the run of the catalogue, which is the right shape for
+one household and the wrong one for more than that. There are no accounts, no
+reset flow and no roles. Wrong guesses are counted per address: eight, then
+five minutes out.
+
+**No authentication at all.** `SMS_AUTH_DISABLED=true`, for development only.
+Everyone is an administrator and nobody is asked anything. The app *refuses to
+start* with it set unless `SMS_DEBUG` is also set, so it cannot be left on by
+accident in the deployed stack. The header says "authentication off" rather
+than naming a user, because there is no user — the "dev" it used to show read
+like an account, which is the one thing it was not.
+
+Devices and agents use bearer tokens instead, which are independent of all
+three. Make them in **Settings** in the web interface: name it, tick what it
+may do, and copy the value once. Only a hash is stored, so there is no page
+that can ever show it again.
+
+All of these live in `.sheetmusicshelf.env` beside the compose file, never in
+the compose file itself. Nothing secret is named in `environment:` on purpose:
+that block *overrides* `env_file:` rather than defaulting it, and `${VAR}`
+there interpolates from the shell running compose rather than from the env
+file — so naming one would resolve it to empty and quietly switch the setting
+off.
+
 ## Deployment
 
 `deploy/sheetmusicshelf.yml` targets the existing NUC stack. Three containers:

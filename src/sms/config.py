@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     scan_batch_size: int = 200
 
     # --- auth -------------------------------------------------------------
+    #: A single shared password for the whole library, for households that have
+    #: not set up an identity provider.  Ignored when OIDC is configured, which
+    #: is the better answer when it is available.  Empty means no password.
+    password: str = ""
     oidc_issuer: str = ""
     oidc_client_id: str = ""
     oidc_client_secret: str = ""
@@ -86,6 +90,15 @@ class Settings(BaseSettings):
     @classmethod
     def _as_path(cls, value: object) -> object:
         return Path(str(value)) if value else value
+
+    @property
+    def password_enabled(self) -> bool:
+        """Whether a shared password is the way in.
+
+        OIDC wins when both are set: an identity provider knows who each person
+        is, and a shared secret cannot.
+        """
+        return bool(self.password.strip()) and not self.oidc_enabled
 
     @property
     def oidc_enabled(self) -> bool:

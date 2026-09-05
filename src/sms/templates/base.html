@@ -24,10 +24,20 @@
   </form>
   <div class="who">
     <a href="/shelves">Shelves</a>
-        <a href="/settings">Settings</a>
+    <a href="/settings">Settings</a>
     <a href="{{ review_link | default('/review') }}">Review</a>
-    <span class="muted">{{ viewer.display_name }}</span>
-    <a href="/auth/logout">Sign out</a>
+    {% if viewer.via == "open" %}
+      {# Not a signed-in user. SMS_AUTH_DISABLED is set, so anyone who can
+         reach this address is an administrator here. Saying "dev" with a Sign
+         out link beside it read like an account, which is the one thing it is
+         not. #}
+      <a class="no-auth" href="/settings#authentication" title="SMS_AUTH_DISABLED is set">
+        authentication off
+      </a>
+    {% else %}
+      <span class="muted">{{ viewer.display_name }}</span>
+      <a href="/auth/logout">Sign out</a>
+    {% endif %}
   </div>
 </header>
 {% endblock %}

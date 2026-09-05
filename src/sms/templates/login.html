@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in &middot; Sheet Music Shelf</title>
+<meta name="theme-color" content="#2c4a8c">
+<link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+</head>
+{# Standalone rather than extending base.html: that template draws the header,
+   and the header is about who you are signed in as. #}
+<body class="signin-page">
+  <main class="signin">
+    <h1>Sheet Music Shelf</h1>
+    <p class="lede">The library is behind a password.</p>
+
+    {% if error %}
+      <p class="signin-error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="/auth/login">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <label>
+        Password
+        <input type="password" name="password" autocomplete="current-password"
+               autofocus required {{ 'disabled' if locked }}>
+      </label>
+      <button class="button" type="submit" {{ 'disabled' if locked }}>Sign in</button>
+    </form>
+
+    <p class="muted small">
+      One password for the whole library, set on the server. There are no
+      accounts here to forget.
+    </p>
+  </main>
+</body>
+</html>

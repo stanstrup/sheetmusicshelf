@@ -28,6 +28,10 @@ from .models import ApiToken, AppUser
 
 TOKEN_PREFIX = "sms_"
 
+#: What a password sign-in puts in the session where OIDC puts a subject. Not a
+#: value any identity provider could issue, so the two cannot be confused.
+PASSWORD_SUBJECT = "password:shared"
+
 SCOPES = {
     "catalog:read": "Browse the catalogue.",
     "catalog:write": "Edit catalogue entries and personal fields.",
@@ -72,6 +76,18 @@ def mint_token(
     return secret, row
 
 
+def password_matches(offered: str) -> bool:
+    """Whether this is the configured password.
+
+    Compared in constant time: a plain ``==`` on a secret leaks its length and,
+    given enough attempts, its contents through how long the comparison takes.
+    """
+    expected = get_settings().password.strip()
+    if not expected:
+        return False
+    return secrets.compare_digest(offered.strip(), expected)
+
+
 def _principal_from_token(session: Session, secret: str) -> Principal | None:
     row = session.scalar(select(ApiToken).where(ApiToken.token_hash == hash_token(secret)))
     if row is None or row.revoked_at is not None:
@@ -90,6 +106,16 @@ def _principal_from_session(session: Session, request: Request) -> Principal | N
     subject = request.session.get("sub") if hasattr(request, "session") else None
     if not subject:
         return None
+
+    # A password sign-in has no account behind it: one household, one secret,
+    # and nobody to look up.
+    if subject == PASSWORD_SUBJECT:
+        return Principal(
+            display_name="signed in",
+            scopes=set(SCOPES),
+            is_admin=True,
+            via="password",
+        )
     user = session.scalar(select(AppUser).where(AppUser.oidc_subject == subject))
     if user is None:
         return None
@@ -115,6 +141,13 @@ def current_principal(request: Request, session: Session = Depends(get_session))
         return principal
 
     settings = get_settings()
+    if settings.password_enabled:
+        # A password is configured and this request has not signed in.
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "sign in, or present a bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if settings.auth_disabled:
         # Development only; main.py refuses to start with this set outside debug.
         return Principal(display_name="dev", scopes=set(SCOPES), is_admin=True, via="open")

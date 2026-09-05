@@ -33,11 +33,20 @@ services:
       SMS_APK_ROOT: /library/managed/_app
       SMS_CACHE_ROOT: /cache
       SMS_BASE_URL: https://sheetmusic.agnostan.org
-      SMS_OIDC_ISSUER: https://auth.agnostan.org/application/o/sheetmusicshelf/
       SMS_LOAD_CEILING: "6"
-      # MusicBrainz requires a reachable contact in the User-Agent and
-      # blocks clients without one. Set it in .sheetmusicshelf.env.
-      SMS_CONTACT: ${SMS_CONTACT:?set SMS_CONTACT to your email or a project URL}
+      #
+      # Everything secret or per-installation comes from .sheetmusicshelf.env
+      # and is deliberately NOT repeated here:
+      #
+      #   SMS_SECRET_KEY   signs the session cookie
+      #   SMS_PASSWORD     one shared password for the whole library
+      #   SMS_OIDC_*       authentik instead, which wins if both are set
+      #   SMS_CONTACT      required before any MusicBrainz or IMSLP lookup
+      #
+      # Naming one here would override the env file rather than default it --
+      # `environment:` wins over `env_file:` -- and `${VAR}` interpolates from
+      # the shell that runs compose, not from the env file, so it would resolve
+      # to empty and quietly switch the setting off.
     volumes:
       # The library.  Everything catalogued lives here, so this is the only
       # mount that has to be present for the app to serve a page.
@@ -71,6 +80,7 @@ services:
       SMS_DATABASE_URL: postgresql+psycopg://sms:sms@postgres-sheetmusicshelf:5432/sms
       SMS_MANAGED_ROOT: /library/managed
       SMS_INGEST_ROOT: /library/ingest
+      SMS_APK_ROOT: /library/managed/_app
       SMS_CACHE_ROOT: /cache
       # The worker pauses between files while the 1-minute load average is above
       # this.  On a 4-core box carrying ~45 containers, a scan that ignores load

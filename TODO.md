@@ -261,3 +261,22 @@ _(nothing outstanding — add items here)_
    redirecting. A redirect would have to carry it in the query string, which
    writes the one value in the system that is never recoverable into browser
    history and into anything that logs a URL.
+
+31) ~~where are the "dev" credentials set?~~ — nowhere, and that was the
+   problem. `SMS_AUTH_DISABLED` makes the server ask nobody to sign in and hand
+   every visitor administrator rights; "dev" was a placeholder name rendered
+   next to a Sign out link, which read like an account. The header now says
+   *authentication off* and Settings explains what that means.
+
+32) ~~there should be a password~~ — `SMS_PASSWORD` in the env file: one shared
+   password for the whole library, a sign-in form, and eight wrong guesses per
+   address before a five-minute wait. Authentik still wins where it is
+   configured, because an identity provider knows who each person is and a
+   shared secret cannot.
+
+   Two compose bugs came out of wiring it up. `environment:` overrides
+   `env_file:` rather than defaulting it, and `${VAR}` there reads the shell
+   that runs compose rather than the env file — so `SMS_CONTACT:
+   ${SMS_CONTACT:?...}` would have failed the very first `docker compose up`
+   with a variable that was sitting in the env file all along. Nothing secret
+   is named in `environment:` now.
