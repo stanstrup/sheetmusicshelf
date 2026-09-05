@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.0.0...v1.0.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ci:** switch pages deploy to JamesIves/github-pages-deploy-action ([b0f2815](https://github.com/stanstrup/sheetmusicshelf/commit/b0f2815c55b4386a26852d63f7e797ce496bfec2)), closes [#pages](https://github.com/stanstrup/sheetmusicshelf/issues/pages) [#pages](https://github.com/stanstrup/sheetmusicshelf/issues/pages)
+
 # 1.0.0 (2026-09-05)
 
 
