@@ -8,9 +8,16 @@ asking, and a phone rotated to landscape asks for a different one again.  Ink
 stored in pixels would land in the wrong place on every surface but the one it
 was drawn on.
 
-**Originals are never touched.**  Marks live in their own table, keyed to piece
-and page, per user.  Deleting every annotation leaves the library exactly as it
-was, and a future native client reads the same rows the browser wrote.
+**Originals are never touched.**  Marks live in their own table, keyed to the
+*file* and the file's own page number, per user.  Deleting every annotation
+leaves the library exactly as it was, and the Android client reads the same
+rows the browser wrote.
+
+Keyed to the file rather than the piece because a piece is a claim about where
+a work starts, and claims get corrected: the page-range editor deletes pieces
+whose boundary has moved, and a cascade from the piece took the ink with it.
+Everything else here can be recomputed from the candidates.  A person's pencil
+cannot.
 """
 
 from __future__ import annotations
@@ -77,12 +84,27 @@ def _require_piece(session: Session, piece_id: int) -> Piece:
     return piece
 
 
-def _row(session: Session, piece_id: int, page: int, user_id: int | None) -> Annotation | None:
+def _mine(user_id: int | None):
+    """Only this reader's own marks.  A shared library is still several people."""
+    return Annotation.user_id.is_(None) if user_id is None else Annotation.user_id == user_id
+
+
+def _file_page(piece: Piece, page: int) -> int:
+    """A reader's page number turned into the file's own.
+
+    Readers count from the start of the piece, because that is what is in
+    front of them.  Storage counts from the start of the file, because that is
+    what does not move when a page range is corrected.
+    """
+    return piece.page_start + page - 1
+
+
+def _row(session: Session, piece: Piece, page: int, user_id: int | None) -> Annotation | None:
     return session.scalar(
         select(Annotation).where(
-            Annotation.piece_id == piece_id,
-            Annotation.page == page,
-            Annotation.user_id.is_(None) if user_id is None else Annotation.user_id == user_id,
+            Annotation.source_file_id == piece.source_file_id,
+            Annotation.page == _file_page(piece, page),
+            _mine(user_id),
         )
     )
 
@@ -97,20 +119,30 @@ def list_layers(
     session: Session = Depends(get_session),
     principal: Principal = Depends(require("catalog:read")),
 ) -> list[PageLayer]:
-    """Fetched once when the reader opens, so page turns need no round trip."""
-    _require_piece(session, piece_id)
+    """Fetched once when the reader opens, so page turns need no round trip.
+
+    Only the pages this piece covers.  Marks made on a neighbouring piece in
+    the same file are somebody else's business, even though they sit in the
+    same table -- which is the price of keying on the file, and cheaper than
+    losing ink every time a boundary moves.
+    """
+    piece = _require_piece(session, piece_id)
     rows = session.scalars(
         select(Annotation)
         .where(
-            Annotation.piece_id == piece_id,
-            Annotation.user_id.is_(None)
-            if principal.user_id is None
-            else Annotation.user_id == principal.user_id,
+            Annotation.source_file_id == piece.source_file_id,
+            Annotation.page >= piece.page_start,
+            Annotation.page <= piece.page_end,
+            _mine(principal.user_id),
         )
         .order_by(Annotation.page)
     )
     return [
-        PageLayer(page=row.page, strokes=(row.data or {}).get("strokes", []), updated_at=row.updated_at)
+        PageLayer(
+            page=row.page - piece.page_start + 1,
+            strokes=(row.data or {}).get("strokes", []),
+            updated_at=row.updated_at,
+        )
         for row in rows
     ]
 
@@ -139,7 +171,7 @@ def put_layer(
             status.HTTP_404_NOT_FOUND, f"piece has {piece.page_count} page(s); asked for {page}"
         )
 
-    row = _row(session, piece_id, page, principal.user_id)
+    row = _row(session, piece, page, principal.user_id)
     strokes = [stroke.model_dump() for stroke in layer.strokes]
 
     if not strokes:
@@ -149,7 +181,12 @@ def put_layer(
         return PageLayer(page=page, strokes=[])
 
     if row is None:
-        row = Annotation(piece_id=piece_id, page=page, user_id=principal.user_id, data={})
+        row = Annotation(
+            source_file_id=piece.source_file_id,
+            page=_file_page(piece, page),
+            user_id=principal.user_id,
+            data={},
+        )
         session.add(row)
     row.data = {"strokes": strokes}
     row.updated_at = datetime.now(timezone.utc)
@@ -168,7 +205,7 @@ def delete_layer(
     session: Session = Depends(get_session),
     principal: Principal = Depends(require("catalog:write")),
 ) -> None:
-    _require_piece(session, piece_id)
-    row = _row(session, piece_id, page, principal.user_id)
+    piece = _require_piece(session, piece_id)
+    row = _row(session, piece, page, principal.user_id)
     if row is not None:
         session.delete(row)

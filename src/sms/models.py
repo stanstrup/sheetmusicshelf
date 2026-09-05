@@ -421,29 +421,42 @@ class ApiToken(Base):
 
 
 class Annotation(Base):
-    """Reserved for the annotation phase.
+    """A coordinate layer over one page of one file.
 
-    Stored as a coordinate layer against a piece and page -- never flattened
-    into the PDF -- so originals stay pristine and a future native client
-    inherits everything made in the browser.
+    Never flattened into the PDF, so originals stay pristine and every client
+    reads what any other client wrote.
+
+    Keyed to the **file** and the file's own page number, not to a piece.  A
+    piece is a claim about where a work starts and ends, and claims get
+    corrected: the page-range editor deletes pieces whose boundary has moved,
+    and a cascade from the piece would take the ink with it.  Everything else
+    in this schema can be recomputed from the candidates; a person's pencil
+    cannot, so it is not hung off the one thing designed to be revised.
+
+    Clients still ask in piece-relative pages, which is what a reader knows.
+    The translation is ``piece.page_start + n - 1``, the same arithmetic the
+    page renderer does.
     """
 
     __tablename__ = "annotation"
     __table_args__ = (
-        Index("ix_annotation_piece_page", "piece_id", "page"),
+        Index("ix_annotation_file_page", "source_file_id", "page"),
         # One layer per page per person. NULLS NOT DISTINCT because an
         # unauthenticated (development) user has no id, and without it Postgres
         # would happily store a second row for the same page.
         UniqueConstraint(
-            "piece_id", "user_id", "page",
+            "source_file_id", "user_id", "page",
             name="uq_annotation_page",
             postgresql_nulls_not_distinct=True,
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    piece_id: Mapped[int] = mapped_column(ForeignKey("piece.id", ondelete="CASCADE"), index=True)
+    source_file_id: Mapped[int] = mapped_column(
+        ForeignKey("source_file.id", ondelete="CASCADE"), index=True
+    )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    #: 1-based within the *file*, so it survives a piece being re-cut.
     page: Mapped[int] = mapped_column(Integer)
     data: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at = _now()
