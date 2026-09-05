@@ -1,9 +1,5 @@
 # TODO
 
-* in the browser you cannot type in the filters to narrow. should be added
-* in the filter sidebar for the browser you cannot scroll and thus if you open many filters the lower ones drop below the page you can see. so the sidebar also needs scrolling possibility.
-* the app needs a clear filters and search button.
-
 _(nothing outstanding — add items here)_
 
 ## Open questions for you
@@ -173,3 +169,35 @@ _(nothing outstanding — add items here)_
 
    Tests went from 256 pure to 308, with a PostgreSQL fixture for the seams.
    Every fault above lived in a seam between two separately-tested things.
+
+21) ~~type to narrow a filter in the browser~~ — any facet with more than
+   twelve values gets a box that filters it as you type. Done in the page: the
+   values are already there, and a round trip per keystroke to narrow a list
+   you are looking at would be slower and no more correct.
+22) ~~the filter sidebar could not scroll~~ — it is `position: sticky` with no
+   height limit, so with several facets open it was taller than the screen and
+   its own bottom was unreachable: the page scrolled, the pinned sidebar did
+   not. Capped and scrollable now. Checked in Chrome: 1,765px of sidebar in a
+   920px box, scrolling to the end.
+23) ~~the app needs a clear button~~ — next to the search box, appearing only
+   when there is something to clear, and emptying the query and every filter
+   together. Dropping filters one chip at a time is fine for one; starting over
+   should not take five taps.
+24) ~~act on the second architecture review~~ — this one designed the system
+   independently first and then diffed, which found things a straight audit had
+   not:
+
+   * **Rejecting a piece did not stop it being filed.** Both surfaces set
+     `review_state` and stopped, so a piece that had auto-accepted kept
+     `route = "accept"`, and `materialise` files anything whose route says
+     accept. Approving through the API had the mirror fault: state recorded,
+     nothing recomputed, so the file was never filed at all.
+   * **The split editor destroyed annotations.** They hung off the piece with a
+     cascading delete, and the editor deletes pieces whose boundary has moved.
+     It already refused to delete a reviewed piece, or one with an accepted
+     candidate -- it protected the two kinds of human judgement the schema could
+     name and dropped the third, the only one that cannot be recomputed.
+
+   The cause of the first is that reads have had a shared home since
+   `catalog_query` and writes never got one, and had now drifted three times.
+   `services/review.py` owns the transitions.

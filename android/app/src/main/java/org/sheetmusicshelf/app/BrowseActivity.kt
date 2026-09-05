@@ -50,6 +50,15 @@ class BrowseActivity : AppCompatActivity() {
             load(); true
         }
         views.retry.setOnClickListener { load() }
+        // One button that empties everything, next to the box you typed in.
+        // Dropping filters one chip at a time is fine for one; starting over
+        // should not take five taps.
+        views.clearButton.setOnClickListener {
+            filters = filters.cleared()
+            views.search.setText("")
+            views.search.clearFocus()
+            load()
+        }
         views.filterButton.setOnClickListener {
             filterScreen.launch(
                 Intent(this, FilterActivity::class.java).putExtras(filters.into(Bundle()))
@@ -105,6 +114,9 @@ class BrowseActivity : AppCompatActivity() {
         views.chips.removeAllViews()
         val active = filters.active
         val hasCollection = filters.collectionId != 0
+        // Offered only when there is something to clear.
+        views.clearButton.visibility =
+            if (filters.isEmpty && views.search.text.isNullOrBlank()) View.GONE else View.VISIBLE
         views.chips.visibility = if (active.isEmpty() && !hasCollection) View.GONE else View.VISIBLE
 
         for ((facet, value) in active) {
@@ -119,13 +131,7 @@ class BrowseActivity : AppCompatActivity() {
                 load()
             })
         }
-        if (active.size + (if (hasCollection) 1 else 0) > 1) {
-            views.chips.addView(chip(getString(R.string.clear_all)) {
-                filters = filters.cleared()
-                views.search.setText("")
-                load()
-            })
-        }
+
     }
 
     private fun chip(text: String, onClose: () -> Unit): Chip = Chip(this).apply {
