@@ -332,6 +332,21 @@ def credited_people(work: dict, limit: int = 3) -> str:
     return ", ".join(seen[:limit]) + (" and others" if len(seen) > limit else "")
 
 
+def musicbrainz_title(mbid: str) -> str:
+    """What MusicBrainz calls the work with this id, or "" if it will not say.
+
+    A direct lookup, not a search: the link is already established, and
+    searching again could land on a different work.
+    """
+    if not mbid.strip():
+        return ""
+    with _client() as client:
+        response = _get(client, f"{MUSICBRAINZ_API}/work/{mbid.strip()}", params={"fmt": "json"})
+        if response.status_code != 200:
+            return ""
+        return (response.json().get("title") or "").strip()
+
+
 def search(
     query: str,
     composer: str | None = None,

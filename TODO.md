@@ -1,6 +1,8 @@
 # TODO
 
 * can we make scrollbars smaller and dark?
+* http://localhost:8014/piece/26 has the id for teh musicbrainz name instead of the name of the piece. that is becauise it was imported before we changed that. can you fix all over?
+
 
 _(nothing outstanding — add items here)_
 
@@ -225,3 +227,13 @@ _(nothing outstanding — add items here)_
    whole design rests on: an accepted candidate is a decision, and the row is
    supposed to show it. That is the shape every write-side fault so far has
    taken. 62 decisions in the live catalogue, all showing.
+
+27) ~~scrollbars smaller and dark~~ — thin, in the page's own colours, with a
+   transparent track. `scrollbar-width` is the standard property and Firefox
+   honours only that; the `-webkit-` rules are for Chromium, which honours only
+   those, so both are needed and both say the same thing.
+28) ~~a MusicBrainz link showing an id instead of a name~~ — 56 of the 58 links
+   were made before the title was stored. `sms work mbtitles` looks each one up
+   *by id* rather than searching again, so an established link cannot drift
+   onto a different work. All 58 now show a name; /piece/26 reads "Sonata for
+   Piano no. 5 in G major, K. 189h/283".

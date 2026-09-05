@@ -545,6 +545,63 @@ def work_list(limit: int = typer.Option(30, "--limit", "-n")) -> None:
         console.print(table)
 
 
+@work_app.command("mbtitles")
+def work_mbtitles(
+    limit: int = typer.Option(None, "--limit", "-n", help="Stop after this many."),
+    force: bool = typer.Option(False, "--force", help="Refetch titles already stored."),
+) -> None:
+    """Fill in the name for MusicBrainz links that only show an id.
+
+    The work page shows what MusicBrainz calls a piece, because a bare id tells
+    you nothing about whether the link is right. Works linked before that was
+    stored still show the id; this looks each one up once, by id rather than by
+    searching again, so an established link cannot drift onto another work.
+    """
+    from .enrich.canonical import musicbrainz_title
+    from .enrich.wikipedia import LookupUnavailable
+    from .models import Work
+
+    with session_scope() as session:
+        query = select(Work).where(Work.musicbrainz_id.is_not(None))
+        if not force:
+            query = query.where(Work.musicbrainz_title.is_(None))
+        works = list(session.scalars(query.order_by(Work.id)))
+        if limit:
+            works = works[:limit]
+
+        if not works:
+            console.print("[green]every MusicBrainz link already shows its name[/green]")
+            return
+
+        filled = failed = 0
+        table = Table(header_style="dim")
+        table.add_column("work", justify="right", style="dim")
+        table.add_column("in the catalogue")
+        table.add_column("at MusicBrainz")
+
+        with console.status(f"looking up {len(works)} titles...") as status:
+            for index, work in enumerate(works, start=1):
+                try:
+                    name = musicbrainz_title(work.musicbrainz_id)
+                except LookupUnavailable as exc:
+                    console.print(f"[red]stopping: {exc}[/red]")
+                    break
+                if name:
+                    work.musicbrainz_title = name
+                    filled += 1
+                    if len(table.rows) < 15:
+                        table.add_row(str(work.id), (work.title or "")[:40], name[:40])
+                else:
+                    failed += 1
+                if index % 10 == 0:
+                    session.commit()
+                status.update(f"looking up titles: {index}/{len(works)}")
+
+    if table.rows:
+        console.print(table)
+    console.print(f"\n[green]{filled} named[/green]" + (f", [yellow]{failed} not found[/yellow]" if failed else ""))
+
+
 @work_app.command("years")
 def work_years(
     limit: int = typer.Option(None, "--limit", "-n"),

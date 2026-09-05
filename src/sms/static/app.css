@@ -19,6 +19,8 @@
   --alert: #9e2e33;
   --alert-soft: #f5e2e3;
   --shadow: 0 1px 2px rgba(21, 24, 31, .06), 0 6px 20px rgba(21, 24, 31, .05);
+  --scroll-thumb: #b9c1cd;
+  --scroll-thumb-hover: #98a2b2;
   --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
   --serif: "Spectral", Georgia, "Times New Roman", serif;
@@ -36,6 +38,8 @@
     --rule-soft: #232935;
     --accent: #8da8e6;
     --accent-soft: #1c2540;
+    --scroll-thumb: #39414f;
+    --scroll-thumb-hover: #4a5464;
     --ok: #63b993;
     --warn: #d2a44c;
     --warn-soft: #2a2314;
@@ -673,3 +677,26 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
 .facet-find::placeholder { color: var(--ink-faint); }
 .facet li.hidden { display: none; }
 .facet .no-match { font-size: 12px; color: var(--ink-faint); padding: 2px 0 4px 18px; }
+
+/* Scrollbars, thin and in the page's own colours.
+ *
+ * There are several on a browse page -- the sidebar, each long facet, a wide
+ * table -- and at their default width they read as chrome bolted onto the
+ * layout rather than part of it. `scrollbar-width` is the standard property
+ * and Firefox honours only that; the -webkit- rules are for Chromium, which
+ * honours only those. Both are needed, and both say the same thing. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 5px;
+  /* Inset by a transparent border so the bar does not touch the content. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
