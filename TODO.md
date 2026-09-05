@@ -1,5 +1,9 @@
 # TODO
 
+* in the browser you cannot type in the filters to narrow. should be added
+* in the filter sidebar for the browser you cannot scroll and thus if you open many filters the lower ones drop below the page you can see. so the sidebar also needs scrolling possibility.
+* the app needs a clear filters and search button.
+
 _(nothing outstanding — add items here)_
 
 ## Open questions for you

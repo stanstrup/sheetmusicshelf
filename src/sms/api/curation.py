@@ -22,6 +22,7 @@ from ..auth import Principal, require
 from ..db import get_session
 from ..ingest.model import KNOWN_FIELDS, REQUIRED_FIELDS
 from ..ingest.persist import accept_value, add_candidate, recompute, retract_candidate
+from ..services import review as review_service
 from ..models import Collection, FieldCandidate, Piece, SourceFile
 from ..pdfsignals import read_signals
 from ..schemas import (
@@ -277,11 +278,7 @@ def approve(
 ) -> PieceOut:
     """Accept the piece as catalogued and take it out of the queue."""
     piece = _require_piece(session, piece_id)
-    from datetime import datetime, timezone
-
-    piece.review_state = "accepted"
-    piece.reviewed_by = principal.user_id
-    piece.reviewed_at = datetime.now(timezone.utc)
+    review_service.approve(session, piece, _reviewer(principal))
     return PieceOut.model_validate(piece)
 
 
@@ -294,12 +291,12 @@ def reject(
     """Exclude the piece from the catalogue -- a cover page, a licence, a scan
     of something that is not music.  The file itself is untouched."""
     piece = _require_piece(session, piece_id)
-    from datetime import datetime, timezone
-
-    piece.review_state = "rejected"
-    piece.reviewed_by = principal.user_id
-    piece.reviewed_at = datetime.now(timezone.utc)
+    review_service.reject(session, piece, _reviewer(principal))
     return PieceOut.model_validate(piece)
+
+
+def _reviewer(principal: Principal) -> review_service.Reviewer:
+    return review_service.Reviewer(principal.user_id, principal.display_name)
 
 
 def _require_piece(session: Session, piece_id: int) -> Piece:

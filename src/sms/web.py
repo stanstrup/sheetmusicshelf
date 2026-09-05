@@ -20,6 +20,7 @@ from .auth import Principal, current_principal
 from .config import get_settings
 from .db import commit_now, get_session
 from .catalog_query import Filters, all_facets, base_query, narrow
+from .services import review as review_service
 from .models import (
     Collection, Composer, FieldCandidate, Piece, RemovedRange, Shelf, ShelfItem,
     SourceFile, Work,
@@ -421,44 +422,18 @@ async def review_submit(
     collection = form.get("collection")
     return_to = (form.get("return_to") or "").strip()
 
+    reviewer = review_service.Reviewer(viewer.user_id, viewer.display_name)
     if action == "reject":
-        piece.review_state = "rejected"
+        review_service.reject(session, piece, reviewer)
     elif action == "accept":
-        # Only what the reviewer actually changed becomes a decision.  The form
-        # arrives pre-filled, so accepting every non-empty field would record
-        # values nobody examined as permanent human judgements -- and a
-        # decision cannot be argued down by a later, better adapter.
-        current = _resolved_values(session, piece)
-        for name, _label in REVIEW_FIELDS:
-            value = (form.get(name) or "").strip()
-            if value and value != (current.get(name) or ""):
-                accept_value(
-                    session, piece, name, value,
-                    user_id=viewer.user_id, source=f"human:{viewer.display_name}",
-                )
-        piece.review_state = "accepted"
-        source_collection = piece.source_file.collection
-        recompute(
+        review_service.decide(
             session, piece,
-            auto_accept=source_collection.auto_accept,
-            review_floor=source_collection.review_floor,
+            {name: form.get(name) or "" for name, _label in REVIEW_FIELDS},
+            reviewer,
         )
-        # The library folder is named from this metadata, so a correction here
-        # means a file has to move.  Queued rather than done inline: the move
-        # is filesystem work over SMB and the reviewer is waiting for the next
-        # piece, not for a copy.
-        from .jobs import enqueue_once
-
-        enqueue_once(session, "materialise", {"collection_id": source_collection.id})
+        review_service.approve(session, piece, reviewer)
     else:
-        # Skipped: leave it pending but push it behind the rest for now.
-        piece.confidence = min(piece.confidence + 0.0001, 0.9999)
-
-    if action in ("accept", "reject"):
-        from datetime import datetime, timezone
-
-        piece.reviewed_by = viewer.user_id
-        piece.reviewed_at = datetime.now(timezone.utc)
+        review_service.skip(session, piece)
 
     # Commit before the redirect: the dependency's own commit would land
     # after the browser has already fetched the next page.

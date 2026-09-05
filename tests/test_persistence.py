@@ -402,3 +402,97 @@ class TestReviewSettlesAPiece:
         piece = only_piece(session, source_file)
         assert piece.music_key == "A minor"
         assert piece.title == "Concerto in A minor"
+
+
+class TestReviewTransitions:
+    """Both surfaces call these, so the transition is asserted once."""
+
+    def _accepted_piece(self, session, collection, source_file):
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Wolfgang Amadeus Mozart", "docinfo", 0.85),
+            ("title", "A Cover Page", "docinfo", 0.85),
+        ))
+        piece = only_piece(session, source_file)
+        assert piece.route == "accept"
+        return piece
+
+    def test_rejecting_takes_the_piece_out_of_the_catalogue(
+        self, session, collection, source_file
+    ):
+        """Rejecting used to set review_state and stop.
+
+        A piece that had auto-accepted kept route "accept", and materialise
+        files anything whose route says accept -- so marking a scan "not
+        music" left its file in the library under the title nobody believed.
+        """
+        from sms.services import review
+
+        piece = self._accepted_piece(session, collection, source_file)
+        review.reject(session, piece, review.Reviewer(None, "test"))
+
+        assert piece.review_state == "rejected"
+        assert piece.route != "accept"
+        assert piece.reviewed_at is not None
+
+    def test_approving_settles_a_piece_the_signals_were_unsure_about(
+        self, session, collection, source_file
+    ):
+        from sms.services import review
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+        ))
+        piece = only_piece(session, source_file)
+        assert piece.route == "review"
+
+        review.approve(session, piece, review.Reviewer(None, "test"))
+        assert piece.route == "accept"
+        assert piece.review_state == "accepted"
+
+    def test_approving_queues_the_filing_pass(self, session, collection, source_file):
+        from sqlalchemy import select
+
+        from sms.models import Job
+        from sms.services import review
+
+        piece = self._accepted_piece(session, collection, source_file)
+        review.approve(session, piece, review.Reviewer(None, "test"))
+
+        queued = session.scalars(select(Job).where(Job.kind == "materialise")).all()
+        assert len(queued) == 1
+        assert queued[0].payload["collection_id"] == collection.id
+
+    def test_deciding_records_only_what_changed(self, session, collection, source_file):
+        from sms.services import review
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+        ))
+        piece = only_piece(session, source_file)
+
+        changed = review.decide(
+            session, piece,
+            {"composer": "Edvard Grieg", "title": "Concerto in A minor"},
+            review.Reviewer(None, "test"),
+        )
+        assert changed == ["title"]        # the composer was already that
+
+    def test_skipping_decides_nothing(self, session, collection, source_file):
+        from sms.services import review
+
+        commit_proposal(session, collection, signals_for(source_file), proposal_with(
+            source_file,
+            ("composer", "Edvard Grieg", "folder", 0.7),
+            ("title", "conamin1", "filename", 0.55),
+        ))
+        piece = only_piece(session, source_file)
+        before = piece.confidence
+
+        review.skip(session, piece)
+        assert piece.review_state == "pending"
+        assert piece.confidence > before      # just moved behind the rest
