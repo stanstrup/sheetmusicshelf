@@ -29,6 +29,22 @@
     <string name="clear_page_message">Removes every mark on this page. The music itself is untouched.</string>
     <string name="mark_not_saved">Mark not saved: %1$s</string>
 
+    <string name="filter">Filter</string>
+    <string name="filter_title">Narrow the catalogue</string>
+    <string name="clear_all">Clear all</string>
+    <string name="show_results">Show results</string>
+    <string name="sort_by">Sort by</string>
+    <string name="any">Any</string>
+    <string name="any_of">Any of %1$d</string>
+    <string name="nothing_to_choose">Nothing catalogued yet</string>
+    <string name="narrow_the_list">Type to narrow the list</string>
+    <string name="one_collection">One collection</string>
+
+    <plurals name="pieces_found">
+        <item quantity="one">%d piece</item>
+        <item quantity="other">%d pieces</item>
+    </plurals>
+
     <plurals name="pages">
         <item quantity="one">%d page</item>
         <item quantity="other">%d pages</item>

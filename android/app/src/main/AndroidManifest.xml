@@ -27,6 +27,15 @@
             android:label="@string/settings"
             android:parentActivityName=".BrowseActivity" />
 
+        <activity
+            android:name=".FilterActivity"
+            android:label="@string/filter_title"
+            android:parentActivityName=".BrowseActivity" />
+
+        <activity
+            android:name=".FacetValuesActivity"
+            android:parentActivityName=".FilterActivity" />
+
         <!-- Landscape is how music is read on a tablet, and the screen must not
              sleep mid-piece: both are handled in the activity itself. -->
         <activity

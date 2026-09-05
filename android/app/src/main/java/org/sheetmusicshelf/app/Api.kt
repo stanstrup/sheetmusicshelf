@@ -64,11 +64,38 @@ class Api(context: Context) {
         }
     }
 
-    /** Search the catalogue. Blank query returns the first page of everything. */
-    fun pieces(query: String, limit: Int = 100): List<Piece> {
-        val q = if (query.isBlank()) "" else "&q=" + java.net.URLEncoder.encode(query, "UTF-8")
-        val json = JSONArray(body(http.newCall(request("/api/v1/pieces?limit=$limit$q").build()).execute()))
+    /** The catalogue, narrowed. Empty filters return the first page of everything. */
+    fun pieces(filters: Filters, limit: Int = 200): List<Piece> {
+        val json = JSONArray(
+            body(http.newCall(request("/api/v1/pieces" + filters.toQuery(limit)).build()).execute())
+        )
         return (0 until json.length()).map { Piece.from(json.getJSONObject(it)) }
+    }
+
+    /**
+     * What each facet can be narrowed to, with a count against every value.
+     *
+     * The counts are the point: they say whether a filter is worth tapping,
+     * and a facet with nothing behind it is not offered at all.
+     */
+    fun facets(): Map<String, List<FacetValue>> {
+        val json = JSONObject(body(http.newCall(request("/api/v1/facets").build()).execute()))
+        val facets = HashMap<String, List<FacetValue>>()
+        for (name in json.keys()) {
+            val rows = json.optJSONArray(name) ?: continue
+            facets[if (name == "collections") Filters.COLLECTION else name] =
+                (0 until rows.length()).mapNotNull { index ->
+                    val row = rows.optJSONArray(index) ?: return@mapNotNull null
+                    if (name == "collections") {
+                        // Collections come back as (id, name): the id is what
+                        // the server filters on, the name is what to show.
+                        FacetValue(row.optString(1), 0, row.optInt(0))
+                    } else {
+                        FacetValue(row.optString(0), row.optInt(1))
+                    }
+                }
+        }
+        return facets
     }
 
     fun piece(id: Int): Piece =
