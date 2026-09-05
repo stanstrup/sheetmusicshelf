@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .auth import Principal, current_principal
 from .config import get_settings
 from .db import commit_now, get_session
-from .catalog_query import Filters, base_query, facet_values, narrow
+from .catalog_query import Filters, all_facets, base_query, narrow
 from .models import (
     Collection, Composer, FieldCandidate, Piece, RemovedRange, Shelf, ShelfItem,
     SourceFile, Work,
@@ -115,33 +115,8 @@ def _filtered(session: Session, params: dict):
 
 
 def _facets(session: Session) -> dict:
-    def values(column, limit: int = 200) -> list[str]:
-        rows = session.execute(
-            select(column, func.count())
-            .where(column.isnot(None), Piece.review_state != "rejected")
-            .group_by(column)
-            .order_by(func.count().desc())
-            .limit(limit)
-        ).all()
-        return [(value, count) for value, count in rows if value]
-
-    periods = session.execute(
-        select(Composer.period, func.count())
-        .where(Composer.period.isnot(None))
-        .group_by(Composer.period)
-        .order_by(func.count().desc())
-    ).all()
-
-    return {
-        "composer": values(Piece.composer_name),
-        "form": values(Piece.form),
-        "instrument": values(Piece.instrumentation),
-        "key": values(Piece.music_key),
-        "period": [(name, count) for name, count in periods if name],
-        "collections": session.execute(
-            select(Collection.id, Collection.name).order_by(Collection.name)
-        ).all(),
-    }
+    """What the filter sidebar offers, from the same builder the API uses."""
+    return all_facets(session)
 
 
 def composer_ids(session: Session) -> dict[str, int]:

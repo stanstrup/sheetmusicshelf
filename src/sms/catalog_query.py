@@ -113,13 +113,70 @@ def base_query():
     return select(Piece).join(SourceFile, Piece.source_file_id == SourceFile.id)
 
 
-def facet_values(session: Session, column, collection_id: int | None = None) -> list[str]:
-    """The distinct values a facet can offer, from what is actually catalogued."""
-    from sqlalchemy import distinct, select
+def facet_values(
+    session: Session,
+    column,
+    collection_id: int | None = None,
+    limit: int = 200,
+) -> list[tuple[str, int]]:
+    """The values a facet can offer and how many pieces each holds.
 
-    query = select(distinct(column)).where(column.isnot(None))
+    Counts, not bare values: "Nocturne (20)" tells you whether a filter is
+    worth tapping, and an empty facet is not offered at all.  Ordered by count,
+    because the useful values are the ones with things behind them.
+    """
+    from sqlalchemy import func, select
+
+    query = (
+        select(column, func.count())
+        .where(column.isnot(None), Piece.review_state != "rejected")
+        .group_by(column)
+        .order_by(func.count().desc())
+        .limit(limit)
+    )
     if collection_id is not None:
         query = query.join(SourceFile, Piece.source_file_id == SourceFile.id).where(
             SourceFile.collection_id == collection_id
         )
-    return sorted(value for value in session.scalars(query) if value)
+    return [(value, count) for value, count in session.execute(query).all() if value]
+
+
+def period_values(session: Session) -> list[tuple[str, int]]:
+    """Periods, which live on the composer record rather than on the piece.
+
+    Counted in pieces, like every other facet.  Counting composers instead
+    would put "Romantic (35)" next to a filter that returns five hundred
+    pieces, and a count beside a filter should say what tapping it gets you.
+    """
+    from sqlalchemy import func, select
+
+    rows = session.execute(
+        select(Composer.period, func.count(Piece.id))
+        .join(Piece, Piece.composer_name == Composer.canonical_name)
+        .where(Composer.period.isnot(None), Piece.review_state != "rejected")
+        .group_by(Composer.period)
+        .order_by(func.count(Piece.id).desc())
+    ).all()
+    return [(name, count) for name, count in rows if name]
+
+
+def all_facets(session: Session, collection_id: int | None = None) -> dict:
+    """Everything a client needs to build a filter sidebar."""
+    from sqlalchemy import select
+
+    from .models import Collection
+
+    return {
+        "composer": facet_values(session, Piece.composer_name, collection_id),
+        "form": facet_values(session, Piece.form, collection_id),
+        "instrument": facet_values(session, Piece.instrumentation, collection_id),
+        "key": facet_values(session, Piece.music_key, collection_id),
+        "status": facet_values(session, Piece.status, collection_id),
+        "period": period_values(session),
+        "collections": [
+            (row.id, row.name)
+            for row in session.execute(
+                select(Collection.id, Collection.name).order_by(Collection.name)
+            ).all()
+        ],
+    }

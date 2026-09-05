@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..auth import Principal, require
 from ..db import get_session
 from ..library import resolve_source
-from ..catalog_query import Filters, base_query, facet_values, narrow
+from ..catalog_query import Filters, all_facets, base_query, narrow
 from ..models import Piece, SourceFile
 from ..schemas import PieceOut
 
@@ -32,6 +32,7 @@ def list_pieces(
     composer: str | None = None,
     form: str | None = None,
     instrument: str | None = Query(None, description="What it is scored for, e.g. 'solo piano'."),
+    period: str | None = Query(None, description="Baroque | Classical | Romantic | Modern, from the composer."),
     music_key: str | None = None,
     collection_id: int | None = None,
     route: str | None = Query(None, description="accept | review | hold"),
@@ -51,7 +52,7 @@ def list_pieces(
         Filters(
             q=q, composer=composer, form=form, instrument=instrument, key=music_key,
             status=status_, route=route, review_state=review_state,
-            collection_id=collection_id,
+            period=period, collection_id=collection_id,
             min_difficulty=min_difficulty, max_difficulty=max_difficulty,
         ),
         text_match="contains",
@@ -93,21 +94,7 @@ def facets(
 ) -> dict:
     """What the filter sidebar offers, computed from what is actually catalogued."""
 
-    def values(column) -> list[str]:
-        query = select(distinct(column)).where(column.isnot(None))
-        if collection_id is not None:
-            query = query.join(SourceFile, Piece.source_file_id == SourceFile.id).where(
-                SourceFile.collection_id == collection_id
-            )
-        return sorted(v for v in session.scalars(query) if v)
-
-    return {
-        "composer": values(Piece.composer_name),
-        "form": values(Piece.form),
-        "instrument": values(Piece.instrumentation),
-        "key": values(Piece.music_key),
-        "status": values(Piece.status),
-    }
+    return all_facets(session, collection_id)
 
 
 @router.get(
