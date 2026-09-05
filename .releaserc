@@ -29,6 +29,10 @@
           {
             "path": "sheetmusicshelf-starter-pack.zip",
             "label": "Starter pack (compose + env template)"
+          },
+          {
+            "path": "android/app/build/outputs/apk/release/app-release.apk",
+            "label": "Android app (APK)"
           }
         ]
       }

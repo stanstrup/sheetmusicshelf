@@ -477,6 +477,89 @@ sms db url                        # show configured database URL (password maske
 
   <StaffDivider />
 
+  <!-- ── Android ───────────────────────────────────────────────── -->
+  <section class="android-section" id="android">
+    <div class="container">
+      <SectionHeading eyebrow="Android companion" lead="A native app for your tablet. Marks you draw sync with the web reader instantly.">
+        Read on the stand
+      </SectionHeading>
+
+      <div class="android-layout">
+        <div class="android-features">
+          <div class="android-feature">
+            <div class="af-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div>
+              <h3>Browse &amp; filter</h3>
+              <p>Search by title, composer or catalogue number. The same facets as the web — period, form, key — with counts that update as you type.</p>
+            </div>
+          </div>
+          <div class="android-feature">
+            <div class="af-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </div>
+            <div>
+              <h3>Swipe through pages</h3>
+              <p>One page per swipe, rendered at the full width of your screen. The display stays awake — a reader that sleeps mid-piece when both hands are busy is worse than none.</p>
+            </div>
+          </div>
+          <div class="android-feature">
+            <div class="af-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+            </div>
+            <div>
+              <h3>Annotate with pen &amp; highlighter</h3>
+              <p>Marks are stored as fractions of the page box and sync to the server the moment a stroke finishes. Open the same piece in the browser and the marks are already there, in the same position on every screen size.</p>
+            </div>
+          </div>
+          <div class="android-feature">
+            <div class="af-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <h3>Token auth, no password</h3>
+              <p>The app authenticates with a token scoped to <code>catalog:read</code> (browse and read) and optionally <code>catalog:write</code> (save marks). Tokens are independent of how people sign in to the browser.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="android-setup">
+          <h3>Installing</h3>
+          <ol class="android-steps">
+            <li>
+              <strong>Get the APK.</strong> Download <code>app-release.apk</code> from the latest release,
+              or open <code>http://your-server:8014/app</code> on your tablet — the server hosts
+              the current build and shows a one-tap install button.
+            </li>
+            <li>
+              <strong>Make a token.</strong> Open <strong>Settings</strong> in the web interface and press
+              <em>Make a token</em>. Or from a shell inside the container:
+              <CodeBlock label="shell">{`docker compose -f sheetmusicshelf.yml exec sheetmusicshelf \\
+  sms token create "tablet" --scope catalog:read --scope catalog:write`}</CodeBlock>
+              The token is shown once and never stored in plain text.
+            </li>
+            <li>
+              <strong>Configure the app.</strong> On first launch it goes straight to Settings.
+              Enter your server address (e.g. <code>192.168.1.10:8014</code>) and the token,
+              then press <em>Save and test</em>.
+            </li>
+          </ol>
+          <p class="android-note">
+            The app permits cleartext HTTP because the server lives on your LAN or VPN. Blocking it
+            would make it useless in exactly the setting it was built for.
+          </p>
+          <a class="btn-primary btn-sm" href="https://github.com/stanstrup/sheetmusicshelf/releases/latest">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download APK
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <StaffDivider />
+
   <!-- ── Footer ────────────────────────────────────────────────── -->
   <footer class="footer">
     <div class="footer-brand">
@@ -806,5 +889,95 @@ sms db url                        # show configured database URL (password maske
     .setup-step { grid-template-columns: 44px 1fr; gap: 1rem; }
     .step-num { font-size: 1.8rem; }
     .footer { flex-direction: column; align-items: flex-start; }
+  }
+
+  /* ── Android ─────────────────────────────────────── */
+  .android-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 5rem 0;
+  }
+  .android-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: start;
+  }
+  .android-features {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+  .android-feature {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .af-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-light);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .af-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--navy);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .android-feature h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.3rem;
+  }
+  .android-feature p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .android-setup {
+    background: var(--ground);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2rem;
+  }
+  .android-setup h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+  }
+  .android-steps {
+    padding-left: 1.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-bottom: 1.25rem;
+  }
+  .android-steps li {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .android-steps li strong { color: var(--ink); }
+  .android-note {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+  }
+  @media (max-width: 860px) {
+    .android-layout { grid-template-columns: 1fr; gap: 2.5rem; }
   }
 </style>
