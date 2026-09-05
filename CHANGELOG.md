@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.1.0...v1.2.0) (2026-09-05)
+
+
+### Features
+
+* canonical sources and save-fields for review queue ([a14c469](https://github.com/stanstrup/sheetmusicshelf/commit/a14c469cba665cb86ece692135bf1d27d0c9536a))
+* reach canonical sources from any piece, not just ones already linked ([bbdb51a](https://github.com/stanstrup/sheetmusicshelf/commit/bbdb51af6636b32aa11c2798d046f85b84136a7b))
+
 # [1.1.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.0.2...v1.1.0) (2026-09-05)
 
 
