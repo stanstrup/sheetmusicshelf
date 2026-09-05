@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/stanstrup/sheetmusicshelf/compare/v1.0.1...v1.0.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* add .nojekyll so GitHub Pages serves _astro/ CSS ([1e0c88f](https://github.com/stanstrup/sheetmusicshelf/commit/1e0c88f960e58644c603a525aa748fec35d9682b))
+
 ## [1.0.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.0.0...v1.0.1) (2026-09-05)
 
 
