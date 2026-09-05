@@ -113,8 +113,21 @@ code { font-family: var(--mono); font-size: .88em; }
   .layout { grid-template-columns: 1fr; gap: 18px; }
 }
 
-.filters { position: sticky; top: 78px; }
-@media (max-width: 760px) { .filters { position: static; } }
+/* Pinned, and scrollable within what is pinned: with several facets open the
+   sidebar is taller than the screen, and a sticky element that overflows puts
+   its own bottom out of reach -- the page scrolls, the sidebar does not. */
+.filters {
+  position: sticky;
+  top: 78px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  overflow-x: hidden;
+}
+@media (max-width: 760px) {
+  .filters { position: static; max-height: none; overflow: visible; }
+}
 .filters-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .filters h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-faint); margin: 0; font-weight: 600; }
 .clear { font-size: 12px; }
@@ -640,3 +653,23 @@ body.reading { background: #0d0f13; color: #e7eaf1; overscroll-behavior: none; }
 .review-delete { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule-soft); }
 .review-delete .button { cursor: pointer; font: inherit; font-size: 13px; }
 .button.danger.ghost { background: transparent; color: var(--alert); border: 1px solid var(--rule); }
+
+/* Type to narrow a long facet.  Shown only where the list is long enough to
+   be worth it, so short facets keep their whole height for values. */
+.facet-find {
+  /* The 18px indent lines it up with the values below it, so the width has to
+     give that back or the sidebar scrolls sideways. */
+  width: calc(100% - 18px);
+  box-sizing: border-box;
+  margin: 2px 0 6px 18px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+.facet-find::placeholder { color: var(--ink-faint); }
+.facet li.hidden { display: none; }
+.facet .no-match { font-size: 12px; color: var(--ink-faint); padding: 2px 0 4px 18px; }

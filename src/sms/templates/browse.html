@@ -5,6 +5,12 @@
   {% if values %}
   <details class="facet" {% if params.get(name) %}open{% endif %}>
     <summary>{{ label }}{% if params.get(name) %} <span class="dot"></span>{% endif %}</summary>
+    {% if values|length > 12 %}
+      {# 200 composers is not a list you read, it is a list you search. #}
+      <input class="facet-find" type="search" autocomplete="off"
+             placeholder="Type to narrow {{ label|lower }}"
+             aria-label="Narrow the {{ label|lower }} list">
+    {% endif %}
     <ul>
       {% for value, count in values %}
         <li>
@@ -16,6 +22,7 @@
         </li>
       {% endfor %}
     </ul>
+    <p class="no-match" hidden>Nothing matches that.</p>
   </details>
   {% endif %}
 {% endmacro %}
@@ -129,4 +136,32 @@
   </section>
 
 </div>
+
+<script>
+  // Narrowing a facet is done here rather than on the server: the values are
+  // already on the page, and a round trip per keystroke to filter a list you
+  // are looking at would be slower and no more correct.
+  document.querySelectorAll(".facet-find").forEach(function (box) {
+    var facet = box.closest(".facet");
+    var items = Array.prototype.slice.call(facet.querySelectorAll("li"));
+    var empty = facet.querySelector(".no-match");
+
+    box.addEventListener("input", function () {
+      var needle = box.value.trim().toLowerCase();
+      var shown = 0;
+      items.forEach(function (item) {
+        var hit = !needle || item.textContent.toLowerCase().indexOf(needle) !== -1;
+        item.classList.toggle("hidden", !hit);
+        if (hit) { shown += 1; }
+      });
+      empty.hidden = shown !== 0;
+    });
+
+    // Typing in the box must not toggle the <details> it lives in.
+    box.addEventListener("click", function (event) { event.stopPropagation(); });
+    box.addEventListener("keydown", function (event) {
+      if (event.key === " ") { event.stopPropagation(); }
+    });
+  });
+</script>
 {% endblock %}
