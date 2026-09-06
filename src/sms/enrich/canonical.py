@@ -394,6 +394,7 @@ def _search_imslp(query: str, limit: int) -> tuple[list[Candidate], str]:
 
 
 def _search_musicbrainz(query: str, composer: str | None, limit: int) -> tuple[list[Candidate], str]:
+    import re as _re
     terms = " AND ".join(token for token in query.split() if token)
     artist = surname(composer or "")
     shapes = []
@@ -401,6 +402,13 @@ def _search_musicbrainz(query: str, composer: str | None, limit: int) -> tuple[l
         shapes.append(f'work:({terms}) AND artist:"{artist}"')
     shapes.append(f"work:({terms})")
     shapes.append(query)
+    # Catalogue numbers (K. 280, BWV 1004, Op. 9) uniquely identify a work.
+    # If the query contains numbers, try searching by those alone with the
+    # artist filter as a high-precision fallback — titles vary across sources
+    # but numbers do not.
+    nums = " AND ".join(_re.findall(r"\b\d+\b", query))
+    if nums and artist:
+        shapes.append(f'work:({nums}) AND artist:"{artist}"')
 
     with _client() as client:
         for attempt in shapes:
