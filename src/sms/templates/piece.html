@@ -39,7 +39,7 @@
       {% if work and work.year %}
         <dt>Composed</dt>
         <dd>{{ work.year_note or work.year }}
-          <span class="muted">&mdash; from IMSLP</span></dd>
+          {% if work.imslp_url %}<span class="muted">&mdash; from IMSLP</span>{% endif %}</dd>
       {% endif %}
       <dt>Pages</dt>
       <dd>

@@ -140,6 +140,35 @@
     {% endif %}
   </section>
 
+  <section class="canonical">
+    <h2>Work details</h2>
+    <form method="post" action="/work/{{ work.id }}/edit" class="work-edit-form">
+      <div class="field">
+        <label for="we_title">Title</label>
+        <input id="we_title" name="title" value="{{ work.title or '' }}" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="we_key">Key</label>
+        <input id="we_key" name="music_key" value="{{ work.music_key or '' }}" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="we_form">Form</label>
+        <input id="we_form" name="form" value="{{ work.form or '' }}" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="we_year">Year composed</label>
+        <input id="we_year" name="year" value="{{ work.year or '' }}" autocomplete="off"
+               placeholder="e.g. 1774">
+      </div>
+      <div class="field">
+        <label for="we_year_note">Year note</label>
+        <input id="we_year_note" name="year_note" value="{{ work.year_note or '' }}" autocomplete="off"
+               placeholder="e.g. ca. 1774, or 1774–75">
+      </div>
+      <p><button class="button ghost small" type="submit">Save</button></p>
+    </form>
+  </section>
+
   {% if pieces %}
     {# A work whose movements sit in separate files is not the same thing as
        a work held in several editions, and calling both "copies" hides which

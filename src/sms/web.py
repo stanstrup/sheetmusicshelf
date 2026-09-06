@@ -745,6 +745,47 @@ def work_detail(
     )
 
 
+@router.post("/work/{work_id}/edit")
+async def work_edit(
+    work_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Update a work's own metadata fields (title, key, form, year)."""
+    _viewer(request, session)
+    work = session.get(Work, work_id)
+    if work is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
+
+    form = await request.form()
+
+    title = (form.get("title") or "").strip()
+    if title:
+        work.title = title
+
+    music_key = (form.get("music_key") or "").strip() or None
+    work.music_key = music_key
+
+    work_form = (form.get("form") or "").strip() or None
+    work.form = work_form
+
+    year_raw = (form.get("year") or "").strip()
+    if year_raw.lstrip("-").isdigit():
+        work.year = int(year_raw)
+        work.year_note = year_raw
+    elif not year_raw:
+        work.year = None
+        work.year_note = None
+    # else: leave as-is (invalid input)
+
+    year_note = (form.get("year_note") or "").strip() or None
+    if year_note:
+        work.year_note = year_note
+
+    commit_now(session)
+    return RedirectResponse(f"/work/{work.id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.post("/work/{work_id}/link")
 async def work_link(
     work_id: int,
