@@ -96,6 +96,7 @@
                 <input type="hidden" name="action" value="imslp">
                 <input type="hidden" name="title" value="{{ hit.title }}">
                 <input type="hidden" name="url" value="{{ hit.url }}">
+                <input type="hidden" name="q" value="{{ q or '' }}">
                 <a href="{{ hit.url }}" rel="noopener">{{ hit.title }}</a>
                 <button class="button small" type="submit">Use this</button>
               </form>
@@ -113,6 +114,7 @@
                 <input type="hidden" name="action" value="musicbrainz">
                 <input type="hidden" name="mbid" value="{{ hit.id }}">
                 <input type="hidden" name="mbtitle" value="{{ hit.title }}">
+                <input type="hidden" name="q" value="{{ q or '' }}">
                 <span class="cand">
                   <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>
                   {% if hit.credits %}<span class="by">{{ hit.credits }}</span>{% endif %}

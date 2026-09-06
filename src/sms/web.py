@@ -704,7 +704,9 @@ async def work_link(
 
     work.enriched_at = datetime.now(timezone.utc)
     commit_now(session)
-    return RedirectResponse(f"/work/{work.id}", status_code=status.HTTP_303_SEE_OTHER)
+    q = (form.get("q") or "").strip()
+    suffix = f"?q={q}" if q else ""
+    return RedirectResponse(f"/work/{work.id}{suffix}", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # --- shelves and personal fields ------------------------------------------
