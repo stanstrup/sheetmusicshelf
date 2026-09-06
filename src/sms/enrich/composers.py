@@ -9,17 +9,67 @@ of dates, one period and one portrait.
 from __future__ import annotations
 
 import logging
+import urllib.parse
 from datetime import datetime, timezone
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, select, update
 from sqlalchemy.orm import Session
 
-from ..models import Composer, Piece
+from ..models import Composer, FieldCandidate, Piece
 from ..music import composers as authority
 from ..music.periods import derive_period
 from . import wikipedia
 
 log = logging.getLogger("sms.enrich")
+
+
+def _wikipedia_title(wikipedia_url: str) -> str:
+    """Extract the display title from a Wikipedia URL, e.g. 'ABBA' from .../wiki/ABBA."""
+    path = urllib.parse.urlparse(wikipedia_url).path
+    slug = path.rstrip("/").rsplit("/", 1)[-1]
+    return urllib.parse.unquote(slug).replace("_", " ")
+
+
+def _rename_canonical(session: Session, composer: Composer, new_name: str) -> None:
+    """Rename a composer's canonical name and update all denormalised fields."""
+    old_name = composer.canonical_name
+    if old_name == new_name:
+        return
+    session.execute(
+        update(Piece).where(Piece.composer_name == old_name).values(composer_name=new_name)
+    )
+    session.execute(
+        update(FieldCandidate)
+        .where(FieldCandidate.field == "composer", FieldCandidate.value == old_name)
+        .values(value=new_name)
+    )
+    aliases = list(dict.fromkeys([*(composer.aliases or []), old_name]))
+    composer.aliases = aliases
+    composer.canonical_name = new_name
+    log.info("renamed composer %r → %r", old_name, new_name)
+
+
+def _merge_into(session: Session, survivor: Composer, duplicate: Composer) -> None:
+    """Move duplicate's pieces to survivor and delete the duplicate record."""
+    dup_name = duplicate.canonical_name
+    surv_name = survivor.canonical_name
+    session.execute(
+        update(Piece).where(Piece.composer_name == dup_name).values(composer_name=surv_name)
+    )
+    session.execute(
+        update(FieldCandidate)
+        .where(FieldCandidate.field == "composer", FieldCandidate.value == dup_name)
+        .values(value=surv_name)
+    )
+    merged_aliases = list(dict.fromkeys([
+        *(survivor.aliases or []),
+        *(duplicate.aliases or []),
+        dup_name,
+    ]))
+    survivor.aliases = merged_aliases
+    session.flush()
+    session.delete(duplicate)
+    log.info("merged composer %r (id=%s) into %r (id=%s)", dup_name, duplicate.id, surv_name, survivor.id)
 
 
 def sync(session: Session) -> tuple[int, int]:
@@ -93,6 +143,32 @@ def enrich(session: Session, composer: Composer, *, force: bool = False) -> tupl
         composer.wikipedia_url = facts.wikipedia_url
     if facts.wikidata_id:
         composer.wikidata_id = facts.wikidata_id
+
+    # Merge any duplicate that shares the same Wikipedia article.
+    if facts.wikipedia_url:
+        duplicate = session.scalar(
+            select(Composer).where(
+                Composer.wikipedia_url == facts.wikipedia_url,
+                Composer.id != composer.id,
+            )
+        )
+        if duplicate is not None:
+            # Keep the one whose canonical_name matches Wikipedia, else keep composer.
+            wiki_title = _wikipedia_title(facts.wikipedia_url)
+            if duplicate.canonical_name == wiki_title:
+                _merge_into(session, survivor=duplicate, duplicate=composer)
+                # The current composer was deleted; enrich the survivor instead.
+                return enrich(session, duplicate, force=force)
+            else:
+                _merge_into(session, survivor=composer, duplicate=duplicate)
+            changed.append("merged duplicate")
+
+    # Rename to the Wikipedia article title when it differs from the current name.
+    if facts.wikipedia_url:
+        wiki_title = _wikipedia_title(facts.wikipedia_url)
+        if wiki_title and wiki_title != composer.canonical_name:
+            _rename_canonical(session, composer, wiki_title)
+            changed.append(f"renamed to {wiki_title!r}")
 
     # Dates from the seed authority are hand-checked; only fill gaps.
     if facts.born and (force or composer.born is None):
