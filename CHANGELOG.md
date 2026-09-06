@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.5.1...v1.6.0) (2026-09-06)
+
+
+### Features
+
+* merge duplicate composers and rename to Wikipedia canonical name on enrich ([5c465e6](https://github.com/stanstrup/sheetmusicshelf/commit/5c465e68197eda915b40d4a01fa6d2de270ce3dc))
+
 ## [1.5.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.5.0...v1.5.1) (2026-09-06)
 
 
