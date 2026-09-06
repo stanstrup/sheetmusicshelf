@@ -1050,6 +1050,21 @@ def settings_page(
     )
 
 
+@router.post("/settings/ingest")
+async def settings_ingest(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Queue an ingest job: scan the drop folder, file the PDFs, clear the folder."""
+    from .jobs import enqueue_once
+
+    viewer = _viewer(request, session)
+    _require_admin(viewer)
+    enqueue_once(session, "ingest", {})
+    commit_now(session)
+    return RedirectResponse("/settings#ingest", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.post("/settings/tokens")
 async def settings_mint(
     request: Request,

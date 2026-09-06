@@ -128,6 +128,55 @@ def scan_collection(session: Session, job: Job) -> str:
     )
 
 
+@handler("ingest")
+def ingest_drop_folder(session: Session, job: Job) -> str:
+    """Import PDFs from the ingest drop folder, file them, and clear the folder."""
+    from .ingest.adapters.base import choose_adapter
+    from .library import clear_ingested, ingest_collection, materialise
+
+    settings = get_settings()
+    root = settings.ingest_root
+    if not root.is_dir():
+        return f"no ingest folder at {root}"
+
+    collection = ingest_collection(session, root)
+    adapter = choose_adapter(root)
+    adapter, context = build_context(root, adapter)
+    stats = ScanStats()
+
+    for signals, proposal in iter_proposals(root, adapter, context, with_hash=True):
+        stats.record(
+            proposal,
+            auto_accept=collection.auto_accept,
+            review_floor=collection.review_floor,
+        )
+        if signals is not None:
+            commit_proposal(session, collection, signals, proposal)
+        if stats.files_seen % 25 == 0:
+            session.commit()
+            wait_for_headroom(settings.load_ceiling)
+
+    if not stats.files_seen:
+        return "ingest folder is empty"
+
+    collection.adapter = adapter.name
+    collection.last_scanned_at = _utcnow()
+    session.commit()
+
+    result = materialise(session, collection, dry_run=False, only_accepted=False)
+    session.commit()
+
+    removed, errors = clear_ingested(session, collection, root)
+    parts = [f"{stats.files_seen} files imported, {stats.pieces} pieces"]
+    if result.copied:
+        parts.append(f"{result.copied} filed")
+    if removed:
+        parts.append(f"{removed} removed from drop folder")
+    for err in [*result.errors, *errors]:
+        log.warning("ingest: %s", err)
+    return ", ".join(parts)
+
+
 @handler("materialise")
 def materialise_collection(session: Session, job: Job) -> str:
     """Bring the library into line with the catalogue.

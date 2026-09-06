@@ -55,6 +55,16 @@
     </p>
   {% endif %}
 
+  <h2 id="ingest">Ingest drop folder</h2>
+  <p class="lede">
+    Drop PDF files into the <code>/library/ingest</code> folder inside the container
+    (or its mapped host path), then click the button below. The worker will scan the
+    files, catalogue them, file them into the library, and empty the folder.
+  </p>
+  <form method="post" action="/settings/ingest">
+    <button class="button" type="submit">Import from ingest folder</button>
+  </form>
+
   <h2 id="tokens">Access tokens</h2>
   <p class="lede">
     A token is how a device or an agent proves who it is. The Android app needs

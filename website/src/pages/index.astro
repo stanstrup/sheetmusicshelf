@@ -18,8 +18,8 @@ import SectionHeading from '../components/SectionHeading.astro';
       <p class="hero-eyebrow">Self-hosted · Docker · Open source</p>
       <h1>Your sheet&nbsp;music library, <em>finally&nbsp;searchable</em></h1>
       <p class="hero-sub">
-        A self-hosted catalogue for PDF sheet music collections. Browse 1,800+ pieces
-        by composer, period, form, or key. Read in the browser with annotations.
+        A self-hosted catalogue for your PDF sheet music collections. Browse by
+        composer, period, form, or key. Read in the browser with annotations.
         Runs on your NAS or homelab in one compose file.
       </p>
       <div class="hero-actions">
@@ -38,7 +38,7 @@ import SectionHeading from '../components/SectionHeading.astro';
       <BrowserFrame
         url="sheetmusic.example.org"
         src="/screenshots/browse.jpg"
-        alt="Browse view — 1,825 pieces sorted by composer, with facet filters and thumbnail previews of sheet music pages"
+        alt="Browse view sorted by composer, with facet filters and thumbnail previews of sheet music pages"
         loading="eager"
       />
     </div>
@@ -179,10 +179,11 @@ import SectionHeading from '../components/SectionHeading.astro';
           </div>
           <h3>Ingest &amp; review queue</h3>
           <p>
-            Drop new PDFs into an ingest folder (Calibre-style) and run <code>sms ingest --apply</code>.
-            The scanner extracts bookmarks and text, proposes a title, composer, key, and form,
-            and scores its own confidence. Pieces above the <em>auto-accept</em> threshold are
-            accepted automatically; the rest land in the review queue.
+            Drop new PDFs into the ingest folder (Calibre-style) and click
+            <em>Import from ingest folder</em> in Settings. The scanner extracts bookmarks and
+            text, proposes a title, composer, key, and form, and scores its own confidence.
+            Pieces above the <em>auto-accept</em> threshold are accepted automatically; the
+            rest land in the review queue.
           </p>
         </div>
 
@@ -312,8 +313,7 @@ docker exec sheetmusicshelf sms collection add /library/managed --name "My Libra
 docker exec sheetmusicshelf sms collection scan 1
 
 # Review the queue in the browser, then accept or reject
-# Or: apply all pending proposals above the auto-accept threshold
-docker exec sheetmusicshelf sms ingest --apply`}</CodeBlock>
+# Or: drop PDFs in /library/ingest and click Import in Settings`}</CodeBlock>
             <p>
               The worker runs enrichment (thumbnails, MusicBrainz, Wikidata) in the background
               after each scan. It throttles itself while the host's 1-minute load average is
@@ -456,12 +456,12 @@ sms collection add /library/managed --name "Mozart Complete Piano"
 sms collection scan <id>          # propose new pieces
 sms collection list
 
-# Ingest (apply accepted proposals)
-sms ingest --apply                # move files, register pieces
-sms ingest --dry-run              # preview without changing anything
+# Ingest drop folder — use Settings > Import in the web UI instead
+# sms ingest --apply              # (CLI fallback: move files, register pieces)
 
 # Composer authority records
-sms composer enrich               # fetch Wikidata portraits + bios
+# Use the Enrich from Wikipedia button on a composer page instead
+# sms composer enrich             # (CLI fallback: fetch Wikidata portraits + bios)
 sms composer list
 
 # Work authority records + canonical links
