@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
 import httpx
@@ -373,12 +374,68 @@ def musicbrainz_title(mbid: str) -> str:
         return (response.json().get("title") or "").strip()
 
 
+def _search_imslp(query: str, limit: int) -> tuple[list[Candidate], str]:
+    try:
+        with _client() as client:
+            response = _get(client, IMSLP_API, params={
+                "action": "query", "format": "json", "list": "search",
+                "srsearch": query, "srlimit": limit, "srnamespace": 0,
+            })
+        if response.status_code == 200:
+            results = [
+                Candidate(title=hit["title"], url=f"https://imslp.org/wiki/{hit['title'].replace(' ', '_')}")
+                for hit in (response.json().get("query") or {}).get("search", [])
+                if hit.get("title")
+            ]
+            return results, ""
+        return [], f"IMSLP returned {response.status_code}"
+    except (LookupUnavailable, httpx.HTTPError) as exc:
+        return [], f"IMSLP search failed ({exc})"
+
+
+def _search_musicbrainz(query: str, composer: str | None, limit: int) -> tuple[list[Candidate], str]:
+    terms = " AND ".join(token for token in query.split() if token)
+    artist = surname(composer or "")
+    shapes = []
+    if artist:
+        shapes.append(f'work:({terms}) AND artist:"{artist}"')
+    shapes.append(f"work:({terms})")
+    shapes.append(query)
+
+    with _client() as client:
+        for attempt in shapes:
+            try:
+                response = _get(client, f"{MUSICBRAINZ_API}/work", params={
+                    "query": attempt, "fmt": "json", "limit": limit,
+                })
+            except (LookupUnavailable, httpx.HTTPError) as exc:
+                return [], f"MusicBrainz search failed ({exc})"
+            if response.status_code != 200:
+                continue
+            results = []
+            for work in response.json().get("works", []):
+                extra = [work.get("disambiguation") or "", work.get("type") or ""]
+                extra += [str(a.get("value") or "") for a in work.get("attributes", [])]
+                language = work.get("language") or ""
+                if language:
+                    extra.append(language)
+                results.append(Candidate(
+                    title=work.get("title") or "",
+                    id=work.get("id") or "",
+                    disambiguation=" · ".join(x for x in extra if x),
+                    credits=credited_people(work),
+                ))
+            if results:
+                return results, ""
+    return [], ""
+
+
 def search(
     query: str,
     composer: str | None = None,
     limit: int = 8,
 ) -> tuple[list[Candidate], list[Candidate], str]:
-    """Search both services by free text, for a person to choose from.
+    """Search both services in parallel by free text, for a person to choose from.
 
     Deliberately unfiltered, unlike :func:`lookup`.  Automatic matching has to
     refuse anything it cannot verify; a person looking at the results can tell
@@ -401,67 +458,18 @@ def search(
     musicbrainz: list[Candidate] = []
     problems: list[str] = []
 
-    with _client() as client:
-        try:
-            response = _get(client, IMSLP_API, params={
-                "action": "query", "format": "json", "list": "search",
-                "srsearch": query, "srlimit": limit, "srnamespace": 0,
-            })
-            if response.status_code == 200:
-                for hit in (response.json().get("query") or {}).get("search", []):
-                    title = hit.get("title") or ""
-                    slug = title.replace(" ", "_")
-                    imslp.append(Candidate(title=title, url=f"https://imslp.org/wiki/{slug}"))
-        except (LookupUnavailable, httpx.HTTPError) as exc:
-            problems.append(f"IMSLP search failed ({exc})")
+    # IMSLP (0.6 s gate) and MusicBrainz (1.2 s gate) are independent, so run
+    # them concurrently: total time = max(each) instead of sum(each).
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_imslp = pool.submit(_search_imslp, query, limit)
+        f_mb = pool.submit(_search_musicbrainz, query, composer, limit)
+        imslp, imslp_err = f_imslp.result()
+        musicbrainz, mb_err = f_mb.result()
 
-        # Search titles first. Handing raw text to MusicBrainz's Lucene parser
-        # searches every field, so "Mozart Allegro K.3" returns works literally
-        # *titled* "Mozart" ahead of the Allegro. A title search is what a
-        # person typing a work name actually means; the broad query is the
-        # fallback for when that finds nothing.
-        # Lucene defaults to OR, so "Mozart Allegro K.3" scores a work titled
-        # simply "Mozart" above the Allegro. Require every term instead.
-        #
-        # The artist constraint is tried first but must not be the only shape:
-        # MusicBrainz credits a *work* to its writers, so "Chiquitita" is filed
-        # under Andersson and Ulvaeus, not under ABBA, and constraining by the
-        # performing act would find nothing at all.
-        terms = " AND ".join(token for token in query.split() if token)
-        artist = surname(composer or "")
-        shapes = []
-        if artist:
-            shapes.append(f'work:({terms}) AND artist:"{artist}"')
-        shapes.append(f"work:({terms})")
-        shapes.append(query)
-
-        for attempt in shapes:
-            try:
-                        response = _get(client, f"{MUSICBRAINZ_API}/work", params={
-                    "query": attempt, "fmt": "json", "limit": limit,
-                })
-            except (LookupUnavailable, httpx.HTTPError) as exc:
-                problems.append(f"MusicBrainz search failed ({exc})")
-                break
-            if response.status_code != 200:
-                continue
-            for work in response.json().get("works", []):
-                # Type, language and attributes tell one "Allegro" from another.
-                extra = [work.get("disambiguation") or "", work.get("type") or ""]
-                extra += [str(a.get("value") or "") for a in work.get("attributes", [])]
-                language = work.get("language") or ""
-                if language:
-                    extra.append(language)
-                musicbrainz.append(
-                    Candidate(
-                        title=work.get("title") or "",
-                        id=work.get("id") or "",
-                        disambiguation=" · ".join(x for x in extra if x),
-                        credits=credited_people(work),
-                    )
-                )
-            if musicbrainz:
-                break
+    if imslp_err:
+        problems.append(imslp_err)
+    if mb_err:
+        problems.append(mb_err)
 
     return imslp, musicbrainz, "; ".join(problems)
 
