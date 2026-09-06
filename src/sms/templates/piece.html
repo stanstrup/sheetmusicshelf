@@ -14,7 +14,13 @@
     <p class="byline">
       {% if composer %}<a href="/composer/{{ composer.id }}">{{ composer.canonical_name }}</a>{% if composer.lifespan %}
         <span class="muted">{{ composer.lifespan }}</span>{% endif %}
-      {% else %}{{ piece.composer_name or "Unknown composer" }}{% endif %}
+      {% elif piece.composer_name %}
+        {{ piece.composer_name }}
+        <form method="post" action="/composer/sync" style="display:inline">
+          <input type="hidden" name="name" value="{{ piece.composer_name }}">
+          <button class="button ghost small" type="submit">Create artist record</button>
+        </form>
+      {% else %}Unknown composer{% endif %}
     </p>
 
     <p class="actions">

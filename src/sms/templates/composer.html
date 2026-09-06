@@ -32,9 +32,12 @@
       {% if composer.description %}<p class="bio">{{ composer.description }}</p>{% endif %}
       {% if composer.wikipedia_url %}
         <p class="source"><a href="{{ composer.wikipedia_url }}" rel="noopener">Wikipedia</a>{% if composer.wikidata_id %} &middot; <a href="https://www.wikidata.org/wiki/{{ composer.wikidata_id }}" rel="noopener">{{ composer.wikidata_id }}</a>{% endif %}</p>
-      {% elif not composer.enriched_at %}
-        <p class="source muted">Not yet enriched &mdash; run <code>sms composer enrich</code>.</p>
       {% endif %}
+      <form method="post" action="/composer/{{ composer.id }}/enrich" style="margin-top:0.5rem">
+        <button class="button ghost small" type="submit">
+          {% if composer.enriched_at %}Refresh from Wikipedia{% else %}Enrich from Wikipedia{% endif %}
+        </button>
+      </form>
     </div>
   </header>
 

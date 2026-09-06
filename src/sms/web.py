@@ -234,6 +234,48 @@ def piece_detail(
     )
 
 
+@router.post("/composer/sync")
+async def composer_sync(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Create Composer records for any piece composer_name that lacks one."""
+    from .enrich import composers as composer_enrich
+
+    _viewer(request, session)
+    form = await request.form()
+    name = (form.get("name") or "").strip()
+
+    composer_enrich.sync(session)
+    commit_now(session)
+
+    # If a specific name was given, redirect to that composer's page.
+    if name:
+        composer = session.scalar(select(Composer).where(Composer.canonical_name == name))
+        if composer:
+            return RedirectResponse(f"/composer/{composer.id}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(request.headers.get("referer") or "/", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/composer/{composer_id}/enrich")
+async def composer_enrich_one(
+    composer_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Fetch and store Wikipedia/Wikidata data for one composer."""
+    from .enrich import composers as composer_enrich
+
+    _viewer(request, session)
+    composer = session.get(Composer, composer_id)
+    if composer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such composer")
+
+    composer_enrich.enrich(session, composer, force=True)
+    commit_now(session)
+    return RedirectResponse(f"/composer/{composer_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.get("/composer/{composer_id}", response_class=HTMLResponse)
 def composer_detail(
     composer_id: int,
