@@ -74,15 +74,27 @@
       number, so anything without one &mdash; or numbered in a house scheme like
       the discs' &ldquo;MOZ&rdquo; &mdash; has to be found by hand.
     </p>
-    {# Prefilled with the work's own title and composer: that is what you would
-       type anyway, and the search is slow enough that saving the typing counts. #}
-    <form class="cansearch" method="get" action="/work/{{ work.id }}" id="cansearch">
-      <input name="q" value="{{ q if q is not none else suggested_query }}"
-             placeholder="Composer and title, or a catalogue number&hellip;"
-             aria-label="Search IMSLP and MusicBrainz" autofocus>
+    {# Two-field form: composer and title searched separately so MusicBrainz
+       can filter by artist and IMSLP can combine them as freetext. #}
+    <form class="cansearch cansearch-split" method="get" action="/work/{{ work.id }}" id="cansearch">
+      <input name="qc"
+             value="{{ qc if qc is not none else suggested_composer }}"
+             placeholder="Composer" aria-label="Composer" autofocus>
+      <input name="qt"
+             value="{{ qt if qt is not none else suggested_title }}"
+             placeholder="Title or catalogue number" aria-label="Title">
       <button class="button" type="submit">Search</button>
       <span class="searching" id="searching" hidden>Searching IMSLP and MusicBrainz&hellip;</span>
     </form>
+    <details class="cansearch-free">
+      <summary class="muted small">Search by freetext instead</summary>
+      <form method="get" action="/work/{{ work.id }}">
+        <input name="q" value="{{ q or '' }}"
+               placeholder="Composer and title, or a catalogue number&hellip;"
+               aria-label="Freetext search">
+        <button class="button" type="submit">Search</button>
+      </form>
+    </details>
 
     {% if searched %}
       {% if not results.imslp and not results.musicbrainz %}
@@ -123,6 +135,7 @@
                 <input type="hidden" name="action" value="musicbrainz">
                 <input type="hidden" name="mbid" value="{{ hit.id }}">
                 <input type="hidden" name="mbtitle" value="{{ hit.title }}">
+                <input type="hidden" name="mbcredits" value="{{ hit.credits }}">
                 <input type="hidden" name="q" value="{{ q or '' }}">
                 <span class="cand">
                   <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>

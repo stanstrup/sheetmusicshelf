@@ -748,6 +748,8 @@ def work_detail(
     request: Request,
     session: Session = Depends(get_session),
     q: str | None = None,
+    qc: str | None = None,
+    qt: str | None = None,
     no_parent: bool = False,
 ) -> Response:
     """One work, its canonical links, and a search for setting them by hand."""
@@ -757,9 +759,6 @@ def work_detail(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
 
     composer = session.get(Composer, work.composer_id) if work.composer_id else None
-    # Movement order first: for a work split over several files the movement
-    # number is the reading order, and id order is only the order the files
-    # happened to be scanned in.
     pieces = list(
         session.scalars(
             select(Piece).where(Piece.work_id == work.id)
@@ -769,9 +768,15 @@ def work_detail(
 
     results = {"imslp": [], "musicbrainz": []}
     error = ""
-    if q:
+    # Split-field search (qc/qt) takes precedence over legacy freetext (q).
+    searched = (qc is not None or qt is not None) or q is not None
+    if qt is not None or qc is not None:
         from .enrich.canonical import search
-
+        results["imslp"], results["musicbrainz"], error = search(
+            qt or "", qc or (composer.canonical_name if composer else None)
+        )
+    elif q:
+        from .enrich.canonical import search
         results["imslp"], results["musicbrainz"], error = search(
             q, composer.canonical_name if composer else None
         )
@@ -781,11 +786,11 @@ def work_detail(
         {
             "viewer": viewer, "work": work, "composer": composer, "pieces": pieces,
             "catalogue": catalogue_label(work),
-            "q": q, "searched": q is not None, "results": results, "error": error,
+            "q": q, "qc": qc, "qt": qt,
+            "searched": searched, "results": results, "error": error,
             "no_parent": no_parent,
-            "suggested_query": " ".join(
-                part for part in ((composer.canonical_name if composer else ""), work.title or "") if part
-            ).strip(),
+            "suggested_composer": composer.canonical_name if composer else "",
+            "suggested_title": work.musicbrainz_title or work.title or "",
         },
     )
 
@@ -862,6 +867,24 @@ async def work_link(
         work.musicbrainz_title = (form.get("mbtitle") or "").strip() or None
         work.confirmed = True
         work.match_note = "MusicBrainz chosen by hand"
+        credits_str = (form.get("mbcredits") or "").strip()
+        if credits_str:
+            first_credit = credits_str.split(",")[0].replace(" and others", "").strip()
+            if first_credit:
+                from .music import composers as authority
+                record = authority.resolve(first_credit)
+                canonical = record.canonical if record else first_credit
+                composer = session.scalar(
+                    select(Composer).where(Composer.canonical_name == canonical)
+                )
+                if composer is None:
+                    composer = session.scalar(
+                        select(Composer).where(
+                            Composer.aliases.contains([first_credit])
+                        )
+                    )
+                if composer is not None:
+                    work.composer_id = composer.id
     elif action == "musicbrainz_parent":
         from .enrich.canonical import find_parent_work
         if work.musicbrainz_id:

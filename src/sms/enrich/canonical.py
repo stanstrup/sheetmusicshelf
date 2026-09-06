@@ -458,10 +458,19 @@ def search(
     musicbrainz: list[Candidate] = []
     problems: list[str] = []
 
+    # When the caller supplies a separate composer name (split-field search),
+    # prepend it to the IMSLP freetext query so IMSLP also gets the name.
+    # MusicBrainz already filters by artist:"surname" via the composer param.
+    composer_sn = surname(composer or "")
+    if composer_sn and composer_sn.lower() not in query.lower():
+        imslp_query = f"{composer} {query}".strip()
+    else:
+        imslp_query = query
+
     # IMSLP (0.6 s gate) and MusicBrainz (1.2 s gate) are independent, so run
     # them concurrently: total time = max(each) instead of sum(each).
     with ThreadPoolExecutor(max_workers=2) as pool:
-        f_imslp = pool.submit(_search_imslp, query, limit)
+        f_imslp = pool.submit(_search_imslp, imslp_query, limit)
         f_mb = pool.submit(_search_musicbrainz, query, composer, limit)
         imslp, imslp_err = f_imslp.result()
         musicbrainz, mb_err = f_mb.result()
