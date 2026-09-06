@@ -79,7 +79,7 @@
             </li>
           {% endif %}
         </ul>
-        {% if work.title or work.music_key or work.form %}
+        {% if work.musicbrainz_title or work.title or work.music_key or work.form %}
           <form method="post" action="/piece/{{ piece.id }}/fill-from-work">
             <button class="button ghost small" type="submit">Fill fields from this work</button>
           </form>

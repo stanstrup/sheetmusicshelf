@@ -692,8 +692,9 @@ async def piece_fill_from_work(
     reviewer = review_service.Reviewer(viewer.user_id, viewer.display_name)
 
     values: dict[str, str] = {}
-    if work.title:
-        values["title"] = work.title
+    title = work.musicbrainz_title or work.title
+    if title:
+        values["title"] = title
     if composer:
         values["composer"] = composer.canonical_name
     if work.music_key:
