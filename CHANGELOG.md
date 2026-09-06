@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.6.1...v1.7.0) (2026-09-06)
+
+
+### Features
+
+* add year / year_note fields to the review form ([ded5c36](https://github.com/stanstrup/sheetmusicshelf/commit/ded5c36a93c433f04693063f7fdafd77b6961c7c))
+
 ## [1.6.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.6.0...v1.6.1) (2026-09-06)
 
 
