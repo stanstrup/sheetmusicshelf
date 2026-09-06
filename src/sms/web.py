@@ -895,8 +895,12 @@ async def work_link(
                 work.match_note = "MusicBrainz parent work chosen by hand"
             else:
                 # No parent — skip enriched_at update and redirect with notice
-                q = (form.get("q") or "").strip()
-                qs = "?no_parent=1" + (f"&q={q}" if q else "")
+                from urllib.parse import urlencode
+                _q = (form.get("q") or "").strip()
+                _qc = (form.get("qc") or "").strip()
+                _qt = (form.get("qt") or "").strip()
+                _p = {k: v for k, v in [("q", _q), ("qc", _qc), ("qt", _qt)] if v}
+                qs = "?no_parent=1" + ("&" + urlencode(_p) if _p else "")
                 return RedirectResponse(f"/work/{work.id}{qs}", status_code=status.HTTP_303_SEE_OTHER)
     elif action == "confirm":
         work.confirmed = True
@@ -909,7 +913,11 @@ async def work_link(
     work.enriched_at = datetime.now(timezone.utc)
     commit_now(session)
     q = (form.get("q") or "").strip()
-    suffix = f"?q={q}" if q else ""
+    qc = (form.get("qc") or "").strip()
+    qt = (form.get("qt") or "").strip()
+    from urllib.parse import urlencode
+    params = {k: v for k, v in [("q", q), ("qc", qc), ("qt", qt)] if v}
+    suffix = ("?" + urlencode(params)) if params else ""
     return RedirectResponse(f"/work/{work.id}{suffix}", status_code=status.HTTP_303_SEE_OTHER)
 
 

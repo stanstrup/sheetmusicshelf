@@ -118,6 +118,8 @@
                 <input type="hidden" name="title" value="{{ hit.title }}">
                 <input type="hidden" name="url" value="{{ hit.url }}">
                 <input type="hidden" name="q" value="{{ q or '' }}">
+                <input type="hidden" name="qc" value="{{ qc or '' }}">
+                <input type="hidden" name="qt" value="{{ qt or '' }}">
                 <a href="{{ hit.url }}" rel="noopener">{{ hit.title }}</a>
                 <button class="button small" type="submit">Use this</button>
               </form>
@@ -137,6 +139,8 @@
                 <input type="hidden" name="mbtitle" value="{{ hit.title }}">
                 <input type="hidden" name="mbcredits" value="{{ hit.credits }}">
                 <input type="hidden" name="q" value="{{ q or '' }}">
+                <input type="hidden" name="qc" value="{{ qc or '' }}">
+                <input type="hidden" name="qt" value="{{ qt or '' }}">
                 <span class="cand">
                   <a href="https://musicbrainz.org/work/{{ hit.id }}" rel="noopener">{{ hit.title }}</a>
                   {% if hit.credits %}<span class="by">{{ hit.credits }}</span>{% endif %}
