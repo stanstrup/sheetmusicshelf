@@ -113,6 +113,20 @@
         </div>
       {% endfor %}
 
+      {% if item.work_id %}
+        <div class="field">
+          <label for="f_work_year">Year composed</label>
+          <input id="f_work_year" name="work_year"
+                 value="{{ work.year or '' }}" autocomplete="off" placeholder="e.g. 1774">
+        </div>
+        <div class="field">
+          <label for="f_work_year_note">Year note</label>
+          <input id="f_work_year_note" name="work_year_note"
+                 value="{{ work.year_note or '' }}" autocomplete="off"
+                 placeholder="e.g. ca. 1774, or 1774–75">
+        </div>
+      {% endif %}
+
       <div class="review-actions">
         <button class="button" name="action" value="accept">Accept</button>
         <button class="button ghost" name="action" value="save">Save fields</button>

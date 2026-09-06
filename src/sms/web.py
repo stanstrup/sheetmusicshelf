@@ -452,6 +452,7 @@ def review(
         item is not None
         and any("order is ambiguous" in note for note in (item.notes_machine or []))
     )
+    work = session.get(Work, item.work_id) if item is not None and item.work_id else None
     return templates.TemplateResponse(
         request, "review.html",
         {
@@ -459,6 +460,7 @@ def review(
             "outstanding": outstanding, "route": route, "ambiguous_order": ambiguous,
             "notes": notes, "offset": offset, "collection_id": collection,
             "order": order, "applied": applied,
+            "work": work,
             "folder_size": (
                 len(review_service.siblings(session, item, "folder")) if item is not None else 0
             ),
@@ -471,6 +473,22 @@ def review(
             "collection": session.get(Collection, collection) if collection else None,
         },
     )
+
+
+def _save_work_year(session: Session, piece: Piece, form) -> None:
+    """Save year / year_note from the review form directly onto the linked Work."""
+    if not piece.work_id:
+        return
+    work = session.get(Work, piece.work_id)
+    if work is None:
+        return
+    year_raw = (form.get("work_year") or "").strip()
+    year_note = (form.get("work_year_note") or "").strip() or None
+    if year_raw.lstrip("-").isdigit():
+        work.year = int(year_raw)
+    elif not year_raw:
+        work.year = None
+    work.year_note = year_note
 
 
 @router.post("/review/{piece_id}")
@@ -503,6 +521,7 @@ async def review_submit(
             reviewer,
         )
         review_service.approve(session, piece, reviewer)
+        _save_work_year(session, piece, form)
     elif action == "save":
         review_service.decide(
             session, piece,
@@ -516,6 +535,7 @@ async def review_submit(
             auto_accept=piece.source_file.collection.auto_accept,
             review_floor=piece.source_file.collection.review_floor,
         )
+        _save_work_year(session, piece, form)
     else:
         review_service.skip(session, piece)
 
