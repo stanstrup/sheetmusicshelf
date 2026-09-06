@@ -86,8 +86,7 @@ Create <code data-astro-cid-j7pv25f6>.sheetmusicshelf-db.env</code> with just
 </p> </div> </div> <div class="setup-step" data-astro-cid-j7pv25f6> <div class="step-num" data-astro-cid-j7pv25f6>4</div> <div class="step-body" data-astro-cid-j7pv25f6> <h3 data-astro-cid-j7pv25f6>Edit mount paths and bring it up</h3> <p data-astro-cid-j7pv25f6>
 Open <code data-astro-cid-j7pv25f6>sheetmusicshelf.yml</code> and adjust the volume paths to match
               your library location. Then from WSL:
-</p> <div class="code-block" data-astro-cid-jgrc2lfe>  <pre data-astro-cid-jgrc2lfe>cd /mnt/z/docker/compose
-docker compose -f sheetmusicshelf.yml up -d</pre> </div>  <p data-astro-cid-j7pv25f6>
+</p> <div class="code-block" data-astro-cid-jgrc2lfe>  <pre data-astro-cid-jgrc2lfe>docker compose -f sheetmusicshelf.yml up -d</pre> </div>  <p data-astro-cid-j7pv25f6>
 The web service runs the Alembic migrations automatically before it starts
               serving. The worker waits for the web service to be healthy before it starts
               processing — so there's no race condition on the first run.
