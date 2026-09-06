@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.2.0...v1.2.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* preserve search query after linking a canonical source ([049cbad](https://github.com/stanstrup/sheetmusicshelf/commit/049cbad5a55634177ac928398a8cb2abc9d75565))
+
 # [1.2.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.1.0...v1.2.0) (2026-09-05)
 
 
