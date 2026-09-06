@@ -1037,6 +1037,7 @@ def settings_page(
             select(ApiToken).order_by(ApiToken.revoked_at.is_not(None), ApiToken.id.desc())
         )
     )
+    collections = list(session.scalars(select(Collection).order_by(Collection.name)))
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -1046,8 +1047,28 @@ def settings_page(
             "scopes": sorted(SCOPES.items()),
             "minted": "",
             "minted_name": "",
+            "collections": collections,
         },
     )
+
+
+@router.post("/settings/scan/{collection_id}")
+async def settings_scan(
+    collection_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Queue a scan for one collection."""
+    from .jobs import enqueue_once
+
+    viewer = _viewer(request, session)
+    _require_admin(viewer)
+    collection = session.get(Collection, collection_id)
+    if collection is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such collection")
+    enqueue_once(session, "scan_collection", {"collection_id": collection_id})
+    commit_now(session)
+    return RedirectResponse("/settings#collections", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/settings/ingest")
@@ -1098,6 +1119,7 @@ async def settings_mint(
             select(ApiToken).order_by(ApiToken.revoked_at.is_not(None), ApiToken.id.desc())
         )
     )
+    collections = list(session.scalars(select(Collection).order_by(Collection.name)))
     return templates.TemplateResponse(
         request,
         "settings.html",
@@ -1107,6 +1129,7 @@ async def settings_mint(
             "scopes": sorted(SCOPES.items()),
             "minted": secret,
             "minted_name": name,
+            "collections": collections,
         },
     )
 

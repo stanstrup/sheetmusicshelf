@@ -55,6 +55,30 @@
     </p>
   {% endif %}
 
+  <h2 id="collections">Collections</h2>
+  <p class="lede">Trigger a scan on any collection to pick up new or changed files.</p>
+  {% if collections %}
+    <table class="tokens">
+      <thead><tr><th>Name</th><th>Source path</th><th>Last scanned</th><th></th></tr></thead>
+      <tbody>
+        {% for col in collections %}
+          <tr>
+            <td>{{ col.name }}</td>
+            <td><code>{{ col.source_path }}</code></td>
+            <td class="muted">{{ col.last_scanned_at.strftime('%Y-%m-%d %H:%M') if col.last_scanned_at else 'never' }}</td>
+            <td>
+              <form method="post" action="/settings/scan/{{ col.id }}">
+                <button class="button ghost small" type="submit">Scan</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No collections yet.</p>
+  {% endif %}
+
   <h2 id="ingest">Ingest drop folder</h2>
   <p class="lede">
     Drop PDF files into the <code>/library/ingest</code> folder inside the container

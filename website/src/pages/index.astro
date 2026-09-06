@@ -287,8 +287,7 @@ SMS_PASSWORD=correct-horse-battery-staple
               Open <code>sheetmusicshelf.yml</code> and adjust the volume paths to match
               your library location. Then from WSL:
             </p>
-            <CodeBlock>{`cd /mnt/z/docker/compose
-docker compose -f sheetmusicshelf.yml up -d`}</CodeBlock>
+            <CodeBlock>{`docker compose -f sheetmusicshelf.yml up -d`}</CodeBlock>
             <p>
               The web service runs the Alembic migrations automatically before it starts
               serving. The worker waits for the web service to be healthy before it starts
