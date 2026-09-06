@@ -2,6 +2,8 @@
 
 *  app: the ... button has almost white on white.
 *  app: needs a dark mode.
+*  ~~app: missing a version~~ — Settings screen now shows Version X.Y.
+*  ~~app: missing a way to check for new version~~ — "Check for update" button on Settings; result shown inline, tapping opens APK download.
 
 _(nothing outstanding — add items here)_
 

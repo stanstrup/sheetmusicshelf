@@ -12,7 +12,7 @@
     <string name="server_hint">192.168.1.10:8014</string>
     <string name="token_label">API token</string>
     <string name="token_hint">sms_…</string>
-    <string name="token_help">Make one on the server with: sms token create "phone" --scope catalog:read --scope catalog:write</string>
+    <string name="token_help">Make one in Settings on the web interface. The app needs catalog:read and catalog:write.</string>
     <string name="save_and_test">Save and test</string>
     <string name="checking">Checking…</string>
     <string name="fill_both">Fill in both the address and the token.</string>
@@ -42,6 +42,11 @@
 
     <string name="update_available">Version %1$s is available</string>
     <string name="get_it">Get it</string>
+
+    <string name="check_for_update">Check for update</string>
+    <string name="up_to_date">Up to date.</string>
+    <string name="update_available_inline">Version %1$s is available. Tap to download.</string>
+    <string name="current_version">Version %1$s</string>
 
     <plurals name="pieces_found">
         <item quantity="one">%d piece</item>
