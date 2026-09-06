@@ -689,7 +689,7 @@ async def piece_fill_from_work(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
 
     composer = session.get(Composer, work.composer_id) if work.composer_id else None
-    reviewer = review_service.Reviewer(user_id=viewer.id if viewer else None)
+    reviewer = review_service.Reviewer(viewer.user_id, viewer.display_name)
 
     values: dict[str, str] = {}
     if work.title:
@@ -701,7 +701,13 @@ async def piece_fill_from_work(
     if work.form:
         values["form"] = work.form
 
+    from .ingest.persist import recompute
     review_service.decide(session, piece, values, reviewer, changed_only=False)
+    recompute(
+        session, piece,
+        auto_accept=piece.source_file.collection.auto_accept,
+        review_floor=piece.source_file.collection.review_floor,
+    )
     commit_now(session)
     return RedirectResponse(f"/piece/{piece_id}", status_code=status.HTTP_303_SEE_OTHER)
 
