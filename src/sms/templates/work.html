@@ -42,13 +42,22 @@
       </ul>
       <form method="post" action="/work/{{ work.id }}/link" class="inline-actions">
         <input type="hidden" name="action" value="clear">
+        <input type="hidden" name="q" value="{{ q or '' }}">
         <button class="button ghost small" type="submit">Clear these links</button>
         {% if not work.confirmed %}
           <button class="button small" type="submit" name="action" value="confirm">
             These are right &mdash; confirm
           </button>
         {% endif %}
+        {% if work.musicbrainz_id %}
+          <button class="button ghost small" type="submit" name="action" value="musicbrainz_parent">
+            Use parent work instead
+          </button>
+        {% endif %}
       </form>
+      {% if no_parent %}
+        <p class="muted small">This MusicBrainz work has no parent &mdash; it is already the top-level work.</p>
+      {% endif %}
     {% else %}
       <p class="muted small">
         {% if work.enriched_at %}{{ work.match_note or "Nothing matched automatically." }}

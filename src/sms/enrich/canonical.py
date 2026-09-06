@@ -332,6 +332,32 @@ def credited_people(work: dict, limit: int = 3) -> str:
     return ", ".join(seen[:limit]) + (" and others" if len(seen) > limit else "")
 
 
+def find_parent_work(mbid: str) -> tuple[str, str] | None:
+    """If a MusicBrainz work is a movement/part, return its parent (mbid, title).
+
+    Uses work-to-work "parts" relations (backward direction = this IS a part of).
+    Returns None when the work has no parent or the lookup fails.
+    """
+    if not mbid.strip():
+        return None
+    with _client() as client:
+        response = _get(
+            client,
+            f"{MUSICBRAINZ_API}/work/{mbid.strip()}",
+            params={"fmt": "json", "inc": "work-rels"},
+        )
+        if response.status_code != 200:
+            return None
+        for relation in response.json().get("relations", []):
+            if relation.get("type") == "parts" and relation.get("direction") == "backward":
+                parent = relation.get("work") or {}
+                parent_id = parent.get("id")
+                parent_title = (parent.get("title") or "").strip()
+                if parent_id:
+                    return parent_id, parent_title
+    return None
+
+
 def musicbrainz_title(mbid: str) -> str:
     """What MusicBrainz calls the work with this id, or "" if it will not say.
 

@@ -623,6 +623,7 @@ def work_detail(
     request: Request,
     session: Session = Depends(get_session),
     q: str | None = None,
+    no_parent: bool = False,
 ) -> Response:
     """One work, its canonical links, and a search for setting them by hand."""
     viewer = _viewer(request, session)
@@ -656,6 +657,7 @@ def work_detail(
             "viewer": viewer, "work": work, "composer": composer, "pieces": pieces,
             "catalogue": catalogue_label(work),
             "q": q, "searched": q is not None, "results": results, "error": error,
+            "no_parent": no_parent,
             "suggested_query": " ".join(
                 part for part in ((composer.canonical_name if composer else ""), work.title or "") if part
             ).strip(),
@@ -694,6 +696,19 @@ async def work_link(
         work.musicbrainz_title = (form.get("mbtitle") or "").strip() or None
         work.confirmed = True
         work.match_note = "MusicBrainz chosen by hand"
+    elif action == "musicbrainz_parent":
+        from .enrich.canonical import find_parent_work
+        if work.musicbrainz_id:
+            parent = find_parent_work(work.musicbrainz_id)
+            if parent:
+                work.musicbrainz_id, work.musicbrainz_title = parent
+                work.confirmed = True
+                work.match_note = "MusicBrainz parent work chosen by hand"
+            else:
+                # No parent — skip enriched_at update and redirect with notice
+                q = (form.get("q") or "").strip()
+                qs = "?no_parent=1" + (f"&q={q}" if q else "")
+                return RedirectResponse(f"/work/{work.id}{qs}", status_code=status.HTTP_303_SEE_OTHER)
     elif action == "confirm":
         work.confirmed = True
     elif action == "clear":
