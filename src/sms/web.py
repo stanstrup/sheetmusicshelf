@@ -634,14 +634,25 @@ async def piece_find_work(
 
     work, _ = find_or_create_work(session, piece)
     if work is None:
-        # Piece has no title yet — create a bare work so the user can still
-        # reach the canonical-source search page and link it by hand.
+        # No work found: either no title, no composer record, or both.
+        # Ensure a Composer record exists for whatever name the piece carries
+        # (covers multi-composer strings like "Rice / Menken" too).
         from .enrich.works import _composer_for
-        composer = _composer_for(session, piece.composer_name)
+        from .enrich import composers as composer_enrich
+        from .music.periods import derive_period
+
+        name = (piece.composer_name or "").strip()
+        if not name:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                "piece has no composer name")
+        composer = _composer_for(session, name)
+        if composer is None:
+            composer_enrich.sync(session)
+            composer = _composer_for(session, name)
         if composer is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                                "piece needs a composer before a work can be created")
-        work = Work(composer_id=composer.id, title="", catalog_suffix="")
+                                f"could not create a composer record for \"{name}\"")
+        work = Work(composer_id=composer.id, title=piece.title or "", catalog_suffix="")
         session.add(work)
         session.flush()
 

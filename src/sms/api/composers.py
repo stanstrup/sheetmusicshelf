@@ -87,7 +87,7 @@ def portrait(
     if not path.exists():
         raise HTTPException(
             status.HTTP_410_GONE,
-            "portrait missing from the cache; re-run `sms composer enrich --force`",
+            "portrait missing from the cache; use the Refresh from Wikipedia button on the composer page",
         )
     return FileResponse(
         path,
