@@ -608,6 +608,44 @@ async def piece_find_work(
     return RedirectResponse(f"/work/{work.id}", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@router.post("/piece/{piece_id}/fill-from-work")
+async def piece_fill_from_work(
+    piece_id: int,
+    request: Request,
+    session: Session = Depends(get_session),
+) -> RedirectResponse:
+    """Copy the linked Work's canonical data into the piece's catalogue fields."""
+    from .services import review as review_service
+
+    viewer = _viewer(request, session)
+    piece = session.get(Piece, piece_id)
+    if piece is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such piece")
+    if not piece.work_id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "piece has no linked work")
+
+    work = session.get(Work, piece.work_id)
+    if work is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such work")
+
+    composer = session.get(Composer, work.composer_id) if work.composer_id else None
+    reviewer = review_service.Reviewer(user_id=viewer.id if viewer else None)
+
+    values: dict[str, str] = {}
+    if work.title:
+        values["title"] = work.title
+    if composer:
+        values["composer"] = composer.canonical_name
+    if work.music_key:
+        values["key"] = work.music_key
+    if work.form:
+        values["form"] = work.form
+
+    review_service.decide(session, piece, values, reviewer, changed_only=False)
+    commit_now(session)
+    return RedirectResponse(f"/piece/{piece_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+
 # --- works and canonical sources ------------------------------------------
 
 def catalogue_label(work: Work) -> str:
