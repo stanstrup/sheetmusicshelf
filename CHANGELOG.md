@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.5.0...v1.5.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* fill-from-work prefers musicbrainz_title over work.title ([33c6978](https://github.com/stanstrup/sheetmusicshelf/commit/33c6978782bbcaeba73b97c5cb87c5fe2eec195f))
+
 # [1.5.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.4.0...v1.5.0) (2026-09-06)
 
 
