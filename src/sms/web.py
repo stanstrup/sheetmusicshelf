@@ -509,6 +509,13 @@ async def review_submit(
             {name: form.get(name) or "" for name, _label in REVIEW_FIELDS},
             reviewer,
         )
+        # decide() records the candidate but doesn't apply it to piece columns;
+        # recompute() does that so the review form shows the new value on reload.
+        recompute(
+            session, piece,
+            auto_accept=piece.source_file.collection.auto_accept,
+            review_floor=piece.source_file.collection.review_floor,
+        )
     else:
         review_service.skip(session, piece)
 
