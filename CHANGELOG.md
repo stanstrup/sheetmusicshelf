@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.4.0...v1.5.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* correct viewer.user_id and add recompute to fill-from-work route ([048664e](https://github.com/stanstrup/sheetmusicshelf/commit/048664e96c8370d7b5a54f363213dba01f552ca6))
+
+
+### Features
+
+* show app version and add update check to Settings screen ([476dacb](https://github.com/stanstrup/sheetmusicshelf/commit/476dacbe6e1d35b3e499f0fa9d74d61304325274))
+
 # [1.4.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.3.0...v1.4.0) (2026-09-06)
 
 
