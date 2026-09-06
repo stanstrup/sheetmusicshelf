@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.2.1...v1.3.0) (2026-09-06)
+
+
+### Features
+
+* "Use parent work instead" for MusicBrainz movement links ([0969ff9](https://github.com/stanstrup/sheetmusicshelf/commit/0969ff9299ac89c0e9b789364a7451f0926f7d9d))
+* fill piece fields from linked work's canonical data ([8981266](https://github.com/stanstrup/sheetmusicshelf/commit/89812660bbf098701320aa1ddde17d3103429396))
+
 ## [1.2.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.2.0...v1.2.1) (2026-09-06)
 
 
