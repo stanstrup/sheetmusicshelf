@@ -1,3 +1,19 @@
+# [1.4.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.3.0...v1.4.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* handle multi-composer names and broken portrait message ([aa47fd3](https://github.com/stanstrup/sheetmusicshelf/commit/aa47fd3bd063600c0ef8f54cb220480fbd4d67e8))
+* Save fields now updates piece columns immediately ([028c9e0](https://github.com/stanstrup/sheetmusicshelf/commit/028c9e05f51ed36de36778157c7acd2867fc1cda))
+
+
+### Features
+
+* collection scan buttons and web UI for CLI commands ([f059bdf](https://github.com/stanstrup/sheetmusicshelf/commit/f059bdfb50f6199467d7b86b2698019937ad71f2))
+* create and enrich composer records from the web UI ([c9ac22c](https://github.com/stanstrup/sheetmusicshelf/commit/c9ac22c962c9b057acf2df909f74f573122234f7))
+* edit work metadata (title, key, form, year) from the web UI ([2690134](https://github.com/stanstrup/sheetmusicshelf/commit/26901345282af5f1639706b44bd1db36b15d7907))
+* trigger ingest from the web UI (Settings page) ([f01e3bd](https://github.com/stanstrup/sheetmusicshelf/commit/f01e3bdb1ccea9d748d35a55aa1f413bb34c9508))
+
 # [1.3.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.2.1...v1.3.0) (2026-09-06)
 
 
