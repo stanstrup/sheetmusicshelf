@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/stanstrup/sheetmusicshelf/compare/v1.6.0...v1.6.1) (2026-09-06)
+
+
+### Performance Improvements
+
+* search IMSLP and MusicBrainz in parallel ([a0056b6](https://github.com/stanstrup/sheetmusicshelf/commit/a0056b6161f669317fcb7e7b02d90963820fa9df))
+
 # [1.6.0](https://github.com/stanstrup/sheetmusicshelf/compare/v1.5.1...v1.6.0) (2026-09-06)
 
 
