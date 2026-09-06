@@ -1,0 +1,324 @@
+---
+import DocLayout from '../layouts/DocLayout.astro';
+---
+<DocLayout
+  title="Sheet Music Shelf Internals"
+  description="Architecture reference: modules, data model, ingest pipeline, scoring, and the sharp edges."
+  hasDiagrams={true}
+>
+
+<header class="top">
+  <p class="eyebrow">Sheet Music Shelf · how the code is put together</p>
+  <h1>Sheet Music Shelf Internals</h1>
+  <p class="standfirst">9,600 lines of Python across 41 modules. The shape of it follows from one decision — that a file is not a catalogue entry — and one promise: a person's judgement outranks the machine's, permanently.</p>
+</header>
+
+<nav class="toc">
+  <a href="#idea"><span>01</span>The central idea</a>
+  <a href="#map"><span>02</span>Module map</a>
+  <a href="#pipeline"><span>03</span>The ingest pipeline</a>
+  <a href="#adapters"><span>04</span>Adapters</a>
+  <a href="#scoring"><span>05</span>Scoring</a>
+  <a href="#candidates"><span>06</span>Candidates and their lifetime</a>
+  <a href="#model"><span>07</span>The data model</a>
+  <a href="#library"><span>08</span>The managed library</a>
+  <a href="#surface"><span>09</span>Web, API and auth</a>
+  <a href="#jobs"><span>10</span>Jobs and rendering</a>
+  <a href="#enrich"><span>11</span>Enrichment and throttling</a>
+  <a href="#tests"><span>12</span>Tests and migrations</a>
+  <a href="#edges"><span>13</span>Sharp edges</a>
+</nav>
+
+<section id="idea">
+  <div class="col">
+    <h2><span class="num">01</span>The central idea</h2>
+    <p>Most cataloguing tools assume one file is one item. Sheet music breaks that assumption immediately: a CD-ROM rip puts sixty pieces in one PDF, and an archive puts one concerto across eight. So the schema separates three things that other designs collapse into one.</p>
+  </div>
+
+  <pre class="mermaid">
+graph LR
+    C[Collection<br/>a directory + its adapter] --> F[SourceFile<br/>one PDF on disk]
+    F --> P[Piece<br/>a page range = one entry]
+    P --> W[Work<br/>the music itself]
+    W --> K[Composer]
+    P -.-> FC[FieldCandidate<br/>every signal, kept]
+    style P fill:#1F4E5F,color:#fff
+    style W fill:#E3ECEE
+  </pre>
+
+  <div class="col">
+    <p><strong>Piece</strong> is the unit you browse: a page range inside a file, with its own title, composer and confidence. <strong>Work</strong> is the music, independent of how many copies you hold — it carries the canonical links, because an IMSLP page describes a sonata, not your particular scan of it. <strong>SourceFile</strong> is bookkeeping about a PDF: size, hash, page count, where its library copy lives.</p>
+  </div>
+
+  <div class="invariant">
+    <span class="tag">The invariant everything else protects</span>
+    <p>A human decision permanently outranks a machine one. An accepted candidate short-circuits its field entirely: no combination of signals, no re-scan, no enrichment pass can replace it. Every feature that writes to the catalogue has to be checked against this.</p>
+  </div>
+</section>
+
+<section id="map">
+  <div class="col">
+    <h2><span class="num">02</span>Module map</h2>
+    <p>Line counts are a rough guide to where the weight sits.</p>
+  </div>
+
+  <div class="files">
+    <div class="group">
+      <h4>Entry points</h4>
+      <dl>
+        <dt>main.py</dt><dd class="loc">115</dd><dd>App factory; mounts the HTML router and six API routers under <code>/api/v1</code></dd>
+        <dt>cli.py</dt><dd class="loc">222</dd><dd>Typer root; the read-only commands that need no database</dd>
+        <dt>cli_admin.py</dt><dd class="loc">616</dd><dd>Everything that touches the database: scan, materialise, ingest, enrich, tokens</dd>
+        <dt>jobs.py</dt><dd class="loc">174</dd><dd>Postgres-backed queue and the worker loop</dd>
+      </dl>
+    </div>
+    <div class="group">
+      <h4>Ingest — reading files and deciding what they are</h4>
+      <dl>
+        <dt>pdfsignals.py</dt><dd class="loc">175</dd><dd>Everything readable from a PDF without interpreting it</dd>
+        <dt>ingest/model.py</dt><dd class="loc">119</dd><dd><code>Candidate</code>, <code>PieceProposal</code>, <code>FileProposal</code>; the vocabulary of fields</dd>
+        <dt>ingest/scanner.py</dt><dd class="loc">117</dd><dd>Walks a collection, yields proposals</dd>
+        <dt>ingest/scoring.py</dt><dd class="loc">269</dd><dd>Resolves competing candidates into one value and a confidence</dd>
+        <dt>ingest/persist.py</dt><dd class="loc">358</dd><dd>Commits proposals; owns the human-outranks-machine rule</dd>
+        <dt>ingest/split.py</dt><dd class="loc">194</dd><dd>Page-range editing for multi-piece volumes</dd>
+        <dt>ingest/adapters/*</dt><dd class="loc">1298</dd><dd>Four collection adapters plus the protocol</dd>
+      </dl>
+    </div>
+    <div class="group">
+      <h4>Domain knowledge</h4>
+      <dl>
+        <dt>music/catalogs.py</dt><dd class="loc">159</dd><dd>Köchel, BWV, Op., Hoboken… parsing and canonical form</dd>
+        <dt>music/composers.py</dt><dd class="loc">147</dd><dd>Folder and filename spellings to canonical names</dd>
+        <dt>music/keys.py</dt><dd class="loc">125</dd><dd>Key signatures and their many spellings</dd>
+        <dt>music/periods.py</dt><dd class="loc">61</dd><dd>Period from dates</dd>
+      </dl>
+    </div>
+    <div class="group">
+      <h4>Library, rendering and enrichment</h4>
+      <dl>
+        <dt>library.py</dt><dd class="loc">356</dd><dd>The managed tree: paths, copying, re-filing, the drop folder</dd>
+        <dt>catalog_query.py</dt><dd class="loc">118</dd><dd>The one place that knows how to narrow the catalogue</dd>
+        <dt>verify.py</dt><dd class="loc">137</dd><dd>Finds the ways the catalogue and the disk drift apart</dd>
+        <dt>render.py</dt><dd class="loc">131</dd><dd>PDF pages to WebP at four widths, cached by hash</dd>
+        <dt>enrich/canonical.py</dt><dd class="loc">479</dd><dd>IMSLP and MusicBrainz matching</dd>
+        <dt>enrich/wikipedia.py</dt><dd class="loc">403</dd><dd>Wikidata-first composer records and portraits</dd>
+        <dt>enrich/works.py</dt><dd class="loc">267</dd><dd>Grouping pieces into works; applying links</dd>
+        <dt>enrich/throttle.py</dt><dd class="loc">91</dd><dd>Per-host rate gate with a circuit breaker</dd>
+      </dl>
+    </div>
+    <div class="group">
+      <h4>Surface</h4>
+      <dl>
+        <dt>web.py</dt><dd class="loc">924</dd><dd>Every server-rendered page: browse, piece, work, review, reader, shelves</dd>
+        <dt>api/*.py</dt><dd class="loc">981</dd><dd>Catalogue, collections, composers, curation, pages, shelves, annotations</dd>
+        <dt>models.py</dt><dd class="loc">492</dd><dd>15 tables</dd>
+        <dt>auth.py</dt><dd class="loc">140</dd><dd>OIDC sessions and bearer tokens, with scopes</dd>
+        <dt>config.py</dt><dd class="loc">90</dd><dd>Settings from <code>SMS_*</code> environment</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section id="pipeline">
+  <div class="col">
+    <h2><span class="num">03</span>The ingest pipeline</h2>
+    <p>One direction of flow, with a deliberate separation: the part that <em>observes</em> never decides, and the part that <em>decides</em> never reads files.</p>
+  </div>
+
+  <pre class="mermaid">
+flowchart TD
+    A[PDF on disk] --> B["pdfsignals.FileSignals<br/><i>pages, hash, DocInfo, outline, text layer</i>"]
+    B --> C["Adapter.propose()<br/><i>emits weighted Candidates</i>"]
+    C --> D["scoring.resolve_field()<br/><i>fold, merge, noisy-OR</i>"]
+    D --> E["persist.commit_proposal()<br/><i>store candidates, recompute</i>"]
+    E --> F{"route()"}
+    F -->|≥ 0.80| G[accept]
+    F -->|0.50–0.79| H[review]
+    F -->|below, or conflict| I[hold]
+    E --> J["library.materialise()<br/><i>copy into the tree</i>"]
+    style C fill:#E3ECEE
+    style D fill:#E3ECEE
+  </pre>
+
+  <div class="col">
+    <p><code>FileSignals</code> is the boundary. It holds what can be read from a PDF without interpretation — page count, SHA-256, DocInfo, the outline, whether there is a text layer, the stem and relative path. An adapter sees only this, never the filesystem, which is what makes adapters testable without fixtures on disk.</p>
+    <p>An adapter returns a <code>FileProposal</code> holding one or more <code>PieceProposal</code>s, each a page range plus a list of <code>Candidate</code>s. A candidate is an <em>opinion</em>: field, value, source name, weight. Adapters never resolve, never write, and never see the database.</p>
+    <p>Scoring turns competing opinions into one value with a confidence. Persistence stores every candidate and writes the resolved values onto the piece row for browsing and filtering.</p>
+  </div>
+</section>
+
+<section id="adapters">
+  <div class="col">
+    <h2><span class="num">04</span>Adapters</h2>
+    <p>A four-method protocol in <code>ingest/adapters/base.py</code>:</p>
+    <pre><code>detect(root) -> float          # 0..1, how sure this adapter fits
+prepare(context) -> None       # collection-wide defaults and notes
+propose(signals, ctx) -> FileProposal
+should_ignore(rel_path) -> bool</code></pre>
+    <p><code>@register</code> adds a class to the registry; <code>choose_adapter()</code> runs every <code>detect</code> and takes the highest score. The four in the tree differ mostly in where they find their evidence:</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Adapter</th><th class="num">Lines</th><th>Reads</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">cdsheetmusic</td><td class="num">446</td><td>DocInfo Subject strings like <code>Mozart: Fantasia in F Minor, MOZ2, P1-10</code>, plus per-volume tables of contents</td></tr>
+          <tr><td class="mono">sheetmusicarchive</td><td class="num">392</td><td>Nothing but the path. Folder-to-form and filename-prefix tables; no metadata exists in these files at all</td></tr>
+          <tr><td class="mono">popcollection</td><td class="num">206</td><td>Filenames of the form <code>348 - Artist - Title (v2).pdf</code></td></tr>
+          <tr><td class="mono">generic</td><td class="num">161</td><td>Fallback: DocInfo and the PDF outline</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Where domain knowledge lives</h3>
+    <p>The lookup tables that encode musical fact — catalogue systems, composer name spellings, key names, which forms are numbered in sequence rather than by opus — live in <code>music/</code>, not in the adapters. Adapters hold conventions of <em>one collection</em>; <code>music/</code> holds things that are true everywhere.</p>
+    <p>The dividing line has one deliberate exception. <code>SINGLE_WORK_FOLDERS</code> in the archive adapter names fourteen folders that hold one work split across files, because nothing in the file layout distinguishes <code>grieg/con_amin</code> (one concerto, three movements) from <code>chopin/preludes</code> (twenty-four separate preludes) — both are one stem plus a number. That is a judgement about the music, listed by hand, and it is scoped to the collection whose folders they are.</p>
+  </div>
+</section>
+
+<section id="scoring">
+  <div class="col">
+    <h2><span class="num">05</span>Scoring</h2>
+    <p><code>ingest/scoring.py</code> is small and carries most of the risk. Four ideas, and one function.</p>
+    <p><code>combine()</code> turns resolved fields into one confidence and the notes a reviewer sees. It is the only place the routing rules are written. They used to be written twice — once here and again in <code>persist.recompute</code> — and the copy that wrote to the database was missing the damaged-text rule, so a title of replacement characters auto-accepted in the catalogue while the tested path sent it to review. Anything deciding how far to trust a piece calls <code>combine()</code>.</p>
+
+    <h3>Folding</h3>
+    <p>Values are compared after per-field normalisation, so <code>Sonata No. 1</code>, <code>Sonata #1</code> and <code>Sonata no.1</code> are one value rather than three competing ones. Titles get extra treatment: number words expand, and a title is <em>subsumed</em> by a longer one that contains it, so <code>Children's Corner</code> and <code>Children's Corner, no. 1</code> merge rather than fight — with the longer, more specific string kept.</p>
+
+    <h3>Noisy-OR</h3>
+    <p>Independent sources agreeing should raise confidence without ever reaching certainty. Two sources at 0.7 combine to 0.91, not 1.4 and not 0.7. Weights are per-signal and stated in the adapter as named constants, so a reading's strength is visible where it is made.</p>
+
+    <h3>Conflict caps rather than averages</h3>
+    <p>When a field's second-place value carries more than <code>CONFLICT_RATIO</code> (0.55) of the winner's weight, that is disagreement, not noise. Confidence is capped at <code>CONFLICT_CAP</code> (0.45) — below the review floor — so a genuine conflict always reaches a person instead of being averaged into a plausible-looking number.</p>
+
+    <h3>A piece is only as good as its weakest key field</h3>
+    <p>Overall confidence is the <em>minimum</em> across composer and title, not the mean. A perfect title with an unknown composer is not an 0.9 piece.</p>
+
+    <div class="note">
+      <p><strong>One quiet subtlety.</strong> The scorer defends against a specific PDF fault: a font with no ToUnicode map decodes to a run of replacement characters. Their presence in a title means the <em>text</em> is damaged, not that the piece is misidentified, and the scorer treats it as such rather than as a competing reading.</p>
+    </div>
+  </div>
+</section>
+
+<section id="candidates">
+  <div class="col">
+    <h2><span class="num">06</span>Candidates and their lifetime</h2>
+    <p>Every signal ever offered about a piece is a row in <code>field_candidate</code>: field, value, source, weight, and whether a person accepted it. The piece row's own columns are a <em>projection</em> of those candidates, rebuilt by <code>recompute()</code> — which is what makes <code>sms collection recompute</code> possible without re-reading a single PDF.</p>
+
+    <div class="invariant">
+      <span class="tag">Retirement</span>
+      <p>Candidates used to be append-only, on the reasoning that keeping every signal was the conservative choice. It was the opposite: a value an adapter had been <em>fixed</em> to stop emitting went on arguing its case for ever, so re-scanning with the fix changed nothing. Schumann's <em>Kreisleriana</em> stayed eight works because a stale <code>Op. 16 no. 3</code> outlived the reading that produced it.</p>
+    </div>
+
+    <p>So each candidate records the <code>adapter</code> that made it. On a re-scan, that adapter's own unaccepted readings that it no longer makes are withdrawn — including a field it has stopped claiming altogether. Accepted candidates and anything posted through the curation API carry no adapter and are never touched, which is what keeps the invariant intact while still letting a bug fix take effect.</p>
+    <p>The matching projection rule: a field whose last candidate is gone is <em>cleared</em> from the piece row rather than left standing. Otherwise an adapter could withdraw a reading and the value it produced would still show in the catalogue — and still group works by it.</p>
+    <p>Agents get the same right through <code>POST /curation/retractions</code>. Retirement is scoped to the adapter that made a reading, so a candidate posted through the API — which has no adapter — was permanently unretirable: one wrong value at 0.65 conflicts with the right one, caps the field at 0.45, and holds the piece for good. An agent has to be able to be wrong reversibly. A <em>decision</em> is not a proposal and is never withdrawn this way; correcting one means accepting a different value, which stays on the record as its own decision.</p>
+  </div>
+</section>
+
+<section id="model">
+  <div class="col">
+    <h2><span class="num">07</span>The data model</h2>
+    <p>Fifteen tables. The interesting ones:</p>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="mono">Table</th><th>Holds</th><th>Worth knowing</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">piece</td><td>A page range that is one catalogue entry</td><td><strong>Identified by <code>(source_file_id, page_start)</code></strong>, with a unique constraint saying so. Carries resolved values, personal fields, <code>movement</code>, <code>instrumentation</code>, and <code>pages_confirmed</code> for a range a person set.</td></tr>
+        <tr><td class="mono">work</td><td>The music itself</td><td>Owns <code>imslp_url</code>, <code>musicbrainz_id</code>, <code>musicbrainz_title</code>, <code>year</code>, <code>year_note</code>, <code>confirmed</code></td></tr>
+        <tr><td class="mono">source_file</td><td>One PDF</td><td><code>managed_path</code> is where the library copy lives; resolution prefers it and falls back to the original</td></tr>
+        <tr><td class="mono">field_candidate</td><td>Every signal, ever</td><td><code>accepted</code> marks a decision; <code>adapter</code> marks who read it</td></tr>
+        <tr><td class="mono">removed_range</td><td>Tombstones</td><td>A deleted page range, so a re-scan cannot recreate what a person removed</td></tr>
+        <tr><td class="mono">annotation</td><td>Marks on a page</td><td>Normalised 0–1 coordinates, so a phone and a tablet agree</td></tr>
+        <tr><td class="mono">job</td><td>Background work</td><td>Claimed with <code>FOR UPDATE SKIP LOCKED</code>; no Redis anywhere</td></tr>
+        <tr><td class="mono">shelf / shelf_item</td><td>Hand-made collections</td><td>Ordered, so a shelf can be a programme</td></tr>
+        <tr><td class="mono">api_token</td><td>Agent credentials</td><td>Hashed; the plaintext is shown once and never stored</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>Free-form structures — notes, tags, annotation geometry — are <code>JSONB</code>. Everything filtered or sorted on is a real indexed column. Notes are split in two on purpose: <code>notes_ingest</code> is what the adapter observed and survives every recompute; <code>notes_machine</code> is what the scorer concluded and is rebuilt each time, because storing a derived note would duplicate it on the next pass.</p>
+  </div>
+</section>
+
+<section id="library">
+  <div class="col">
+    <h2><span class="num">08</span>The managed library</h2>
+    <p><code>library.py</code> owns the tree. <code>target_path()</code> builds <code>&lt;Composer&gt;/&lt;Title&gt; (&lt;Cat.&gt;)/&lt;file&gt;.pdf</code> for single-work files, and <code>_Books/&lt;Collection&gt;/&lt;original path&gt;</code> for volumes holding several pieces — a 378-page anthology cannot sit in one work's folder without misrepresenting itself.</p>
+    <p>Because a folder name is built from metadata, it must follow the metadata. Three functions exist for that:</p>
+    <ul>
+      <li><code>_refile()</code> — moves a copy the library already holds when review renames it, rather than copying again and leaving a folder behind for every name a piece ever had</li>
+      <li><code>_prune_empty()</code> — removes folders a move emptied, stopping at the library root; a composer folder left behind after their last piece moved out reads as a piece still being there</li>
+      <li><code>_claimed_by_another()</code> — stops two catalogue rows sharing one file. Size is not identity: the pop collection holds the same arrangement twice under different numbers, and matching on size alone let the second row point at the first row's copy and never get one of its own</li>
+    </ul>
+    <p><code>resolve_source()</code> is the one way to find a file: the library copy when there is one, the original otherwise. Three call sites used to resolve three ways, and the odd one out built its path from the collection's source directory — which stopped being mounted when the library became authoritative, so that endpoint returned 410 for the whole catalogue while the page renderer, reading the same rows, worked.</p>
+    <p>The drop folder is the same machinery pointed at a queue. <code>ingest_collection()</code> owns it, <code>clear_ingested()</code> empties it — checking the copy actually on disk rather than the database, because removing something from a drop folder is only safe once the library really holds it.</p>
+
+    <div class="note">
+      <p><strong>Filesystem work is not covered by the transaction.</strong> A failure part-way through a materialise or a retirement rolls the database back but leaves completed <code>unlink</code> and <code>move</code> calls done. This has already happened once in anger. The tree can always be rebuilt from the originals, so it is recoverable — but the counts a run reports can disagree with the counts in the database, and that is why.</p>
+    </div>
+  </div>
+</section>
+
+<section id="surface">
+  <div class="col">
+    <h2><span class="num">09</span>Web, API and auth</h2>
+    <p>Two surfaces over one core. <code>web.py</code> serves server-rendered HTML with plain forms — no client framework, no CDN assets, because a phone on the VPN may have no route to the internet. It is the largest module and the most obvious candidate for splitting.</p>
+    <p><code>api/</code> is the machine surface under <code>/api/v1</code>: catalogue search and facets, collections and scans, composers and portraits, curation, page images, shelves, annotations. External curation tools are a first-class client — the app deliberately runs no model itself, so the API is how a model outside it contributes.</p>
+    <p>Three ways in, resolved into one viewer: an authentik OIDC session for people, a bearer token with scopes for agents and devices, and an open mode for local development. Curation endpoints accept a candidate <em>with a weight</em> as well as an outright decision, which is usually the more honest thing for a machine to offer.</p>
+
+    <div class="note">
+      <p><strong>A trap worth remembering.</strong> FastAPI runs a <code>yield</code> dependency's exit code <em>after</em> the response is sent, so a session committed on the way out lands after the browser has already followed a redirect. Every mutating handler therefore calls <code>commit_now()</code> before redirecting. Without it the review page reproducibly showed stale state until a manual refresh.</p>
+    </div>
+  </div>
+</section>
+
+<section id="jobs" class="col">
+  <h2><span class="num">10</span>Jobs and rendering</h2>
+  <p>The queue is a table. <code>claim_one()</code> takes a job with <code>FOR UPDATE SKIP LOCKED</code>, handlers register by kind through a decorator, and the worker loops. Adding Redis to a stack that already runs PostgreSQL would be a second thing to operate for no gain at this size.</p>
+  <p>A worker killed mid-job leaves it <code>running</code> with nothing to notice: no lease, no heartbeat, and the row lock dies with the connection. <code>reclaim_stale()</code> returns jobs stuck past four hours to the queue, and fails one that has killed three workers rather than retrying for ever. Filing is a job too, queued (deduplicated) when review changes a name, because the library folder is named from that metadata and letting the tree drift is letting the catalogue lie about where things are.</p>
+  <p>The worker also yields to the machine: <code>wait_for_headroom()</code> pauses between files while the one-minute load average is above <code>SMS_LOAD_CEILING</code>. On a four-core box carrying dozens of containers, a scan that ignores load is not a slow scan — it is an outage for everything else.</p>
+  <p>Rendering goes through <code>render.py</code>: pages to WebP at 320, 800, 1200 and 1800, cached under a key derived from the file's content hash, so an unchanged file reuses renders across re-scans and an edited one gets fresh images automatically.</p>
+  <div class="note">
+    <p><strong>PDFium is not thread-safe.</strong> A module-level lock serialises every render. This was learned by rendering sixty thumbnails in parallel and corrupting the library process-wide. Do not remove the lock to make thumbnails faster.</p>
+  </div>
+</section>
+
+<section id="enrich" class="col">
+  <h2><span class="num">11</span>Enrichment and throttling</h2>
+  <p>Three passes, all outbound, all optional. Composers resolve Wikidata-first and fall back to Wikipedia, caching the portrait locally with its attribution. Works match against IMSLP's MediaWiki API and MusicBrainz's <code>/ws/2</code> with Lucene queries built from the catalogue number and composer. Years are read from the IMSLP page already linked, which costs one extra read rather than another search — and the source's own wording is kept alongside the parsed integer, because reducing "ca. 1783" to 1783 would promise precision the source did not give.</p>
+  <p>Matching handles compound catalogue citations in both directions: MusicBrainz files Mozart's first sonata as "K. 189d/279" and IMSLP as "K.283/189h", and either half counts. Fixing that alone took MusicBrainz coverage from 35 works to 57.</p>
+  <p>Everything outbound passes <code>enrich/throttle.py</code>: a per-host gate with a minimum interval — 1.2 s for MusicBrainz, 0.6 s for IMSLP, 0.2 s for Wikimedia — and a circuit breaker that stands the app down when a service starts refusing. <code>config.user_agent</code> <em>raises</em> if <code>SMS_CONTACT</code> is unset rather than sending a plausible-looking fake, because these services block clients without a reachable contact and being polite is a correctness property here, not a courtesy.</p>
+</section>
+
+<section id="tests" class="col">
+  <h2><span class="num">12</span>Tests and migrations</h2>
+  <p>308 tests, 2,253 lines. Most are pure — adapters take a <code>FileSignals</code> dataclass, the scorer takes a list of candidates, catalogue and key parsing take strings — which is why the suite runs in seven seconds and why the parts with the subtlest logic are the easiest to test.</p>
+  <p>That was the whole strategy until an independent review found what it was hiding. <code>score_piece</code> and <code>persist.recompute</code> had drifted into two versions of the same rules, and only <code>score_piece</code> was tested: a rule was asserted, was real, and never ran on the path that writes to the catalogue. Nothing pure could have caught it, because the fault was in the seam between two tested things.</p>
+  <p>So there is now a <code>conftest.py</code> with a PostgreSQL fixture — the models use JSONB and the queue uses <code>FOR UPDATE SKIP LOCKED</code>, so SQLite would be testing something else — pointed at a scratch database by <code>SMS_TEST_DATABASE_URL</code>, and <em>skipped</em> rather than failed when none is reachable, so a checkout with no database still runs the rest. Three files cover the seams: <code>test_persistence.py</code> (routing, the human-outranks-machine promise, retirement, tombstones, retraction), <code>test_jobs.py</code> (claiming, reclaiming, queueing once) and <code>test_routes_smoke.py</code>, which calls every page and read endpoint once and asserts only that they answer — twenty lines that would have caught the 410.</p>
+  <p>Thirteen Alembic migrations. A column added to a populated table gets a <code>server_default</code> first and the constraint after; a data backfill belongs in the migration that needs it, as with attributing existing candidates to the adapter that made them.</p>
+</section>
+
+<section id="edges" class="col">
+  <h2><span class="num">13</span>Sharp edges</h2>
+  <p>Things that will bite someone changing this code.</p>
+  <ul>
+    <li><strong>Commit before redirecting.</strong> See §09. It looks like a caching bug every single time.</li>
+    <li><strong>Hold the PDFium lock.</strong> See §10.</li>
+    <li><strong>Filesystem operations are not transactional.</strong> See §08 — and run <code>sms verify</code> after anything that moves files in bulk, because that is the only way to find out.</li>
+    <li><strong>Weights are magic numbers</strong> spread across adapters as named constants. Readable in place, but there is no global view of how they interact and no test asserts the ordering between them.</li>
+    <li><strong>Adding a candidate field</strong> means touching <code>KNOWN_FIELDS</code>, possibly <code>DENORMALISED</code>, possibly <code>_INT_COLUMNS</code>, and a migration. There is still no single place that declares a field. Adding a <em>filter</em>, by contrast, is now one field and one line in <code>catalog_query.py</code>.</li>
+    <li><strong>A file with more than one piece is a "book"</strong> and files under <code>_Books/</code>. Anything that changes how many pieces a file has changes where it lives on disk.</li>
+    <li><strong>Adapters must stay pure.</strong> They see <code>FileSignals</code> and a context, never the database and never the filesystem. Reaching outside that is what makes them untestable.</li>
+    <li><strong><code>Instrument</code> and <code>PieceInstrument</code> are unused.</strong> Instrumentation is a denormalised string on the piece, because a folder called <code>violpian</code> says "violin and piano" and nothing finer. A normalised model should wait for evidence that supports one.</li>
+  </ul>
+  <p style="color:var(--doc-ink-faint)"><strong>Not a sharp edge:</strong> <code>web.py</code>'s length. It reads as a flat list of about twenty-five independent handlers averaging thirty lines, and an outside review of this codebase concluded that splitting it buys tidiness and nothing else. The one thing worth extracting from it was the query builder it duplicated with the API, and that has been done.</p>
+</section>
+
+<footer>
+  <p>Python 3.13, FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL 16, pypdfium2, Jinja2, Typer. 9,618 lines in <code>src/sms</code>, 2,253 in <code>tests</code>, 13 migrations, 308 tests. Current as of 3 September 2026.</p>
+</footer>
+
+</DocLayout>
